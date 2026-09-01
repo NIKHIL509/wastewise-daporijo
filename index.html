@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WasteWise Daporijo</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --soil: #2E5339;
+    --soil-dark: #1F3B2C;
+    --compost: #8C6D3F;
+    --paper: #FBF8F2;
+    --card: #FFFFFF;
+    --ink: #26302B;
+    --ink-soft: #63706A;
+    --line: #E3E0D6;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 16px 16px 60px; }
+  header {
+    padding: 20px 4px 16px;
+    border-bottom: 2px solid var(--soil);
+    margin-bottom: 16px;
+  }
+  .eyebrow { text-transform: uppercase; letter-spacing: 0.12em; font-size: 11px; color: var(--compost); font-weight: 700; margin: 0 0 6px; }
+  h1 { font-size: 22px; margin: 0 0 4px; color: var(--soil-dark); letter-spacing: -0.01em; }
+  .sub { font-size: 13px; color: var(--ink-soft); margin: 0; }
+
+  nav { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 18px; padding-bottom: 2px; }
+  nav button {
+    flex: 0 0 auto; padding: 9px 14px; border-radius: 999px; border: 1.5px solid var(--line);
+    background: var(--card); color: var(--ink-soft); font-size: 13px; font-weight: 600; cursor: pointer;
+    white-space: nowrap;
+  }
+  nav button.active { background: var(--soil); border-color: var(--soil); color: #fff; }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 18px 16px; margin-bottom: 14px;
+  }
+  .card h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--soil); margin: 0 0 14px; font-weight: 700; }
+
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .field { margin-bottom: 16px; }
+  .field:last-child { margin-bottom: 0; }
+  input[type=text], input[type=date], input[type=number], select, textarea {
+    width: 100%; padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 10px;
+    font-size: 15px; font-family: inherit; background: var(--paper); color: var(--ink);
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--soil); }
+  textarea { min-height: 56px; resize: vertical; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .slider-row { display: flex; align-items: center; gap: 12px; }
+  input[type=range] { flex: 1; accent-color: var(--soil); }
+  .slider-val { min-width: 46px; text-align: right; font-weight: 700; color: var(--soil-dark); font-size: 16px; }
+
+  button.submit {
+    width: 100%; padding: 15px; border: none; border-radius: 12px; background: var(--soil);
+    color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;
+  }
+  button.submit:active { background: var(--soil-dark); }
+  button.submit:disabled { opacity: 0.6; }
+
+  .status { margin-top: 12px; padding: 12px 14px; border-radius: 10px; font-size: 14px; display: none; }
+  .status.ok { display: block; background: #E9F1EA; color: var(--soil-dark); border: 1px solid #BFD9C4; }
+  .status.err { display: block; background: #FBEAEA; color: #8A2A2A; border: 1px solid #E9BEBE; }
+
+  /* Dashboard */
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+  .stat {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 14px; text-align: left;
+  }
+  .stat .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); font-weight: 700; margin-bottom: 6px; }
+  .stat .value { font-size: 24px; font-weight: 800; color: var(--soil-dark); }
+  .stat .value.muted { color: var(--ink-soft); font-size: 15px; font-weight: 600; }
+  .chart-wrap { position: relative; height: 220px; }
+  .refresh-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .refresh-row button { background: none; border: 1.5px solid var(--line); border-radius: 8px; padding: 7px 12px; font-size: 12px; font-weight: 700; color: var(--soil); cursor: pointer; }
+  .empty { font-size: 13px; color: var(--ink-soft); padding: 8px 0; }
+
+  /* ---------- Splash screen ---------- */
+  .splash-screen {
+    position: fixed; inset: 0; z-index: 9999;
+    background: linear-gradient(160deg, var(--soil-dark), var(--soil));
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+    color: #fff; text-align: center; padding: 20px; cursor: pointer;
+    animation: splashFadeOut 0.6s ease 4s forwards;
+  }
+  .splash-content { animation: splashRise 0.9s ease; }
+  .splash-icon { font-size: 54px; animation: splashPulse 1.8s ease-in-out infinite; }
+  .splash-title { font-size: 28px; font-weight: 800; margin: 12px 0 6px; letter-spacing: -0.01em; }
+  .splash-sub { font-size: 13px; opacity: 0.88; margin: 0 0 8px; max-width: 320px; }
+  .splash-tag { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.6; margin: 0 0 26px; }
+  .splash-bar { width: 200px; height: 4px; background: rgba(255,255,255,0.25); border-radius: 999px; overflow: hidden; margin: 0 auto; }
+  .splash-bar-fill { height: 100%; background: #fff; width: 0%; animation: splashBarFill 3.6s ease forwards; }
+  @keyframes splashRise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes splashPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+  @keyframes splashBarFill { from { width: 0%; } to { width: 100%; } }
+  @keyframes splashFadeOut { from { opacity: 1; visibility: visible; } to { opacity: 0; visibility: hidden; } }
+
+  /* ---------- Login screen ---------- */
+  .login-screen {
+    position: fixed; inset: 0; z-index: 9998; background: var(--paper);
+    display: none; align-items: center; justify-content: center; padding: 20px;
+  }
+  .login-card {
+    max-width: 360px; width: 100%; background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 32px 26px; text-align: center;
+  }
+  .login-icon { font-size: 38px; margin-bottom: 8px; }
+  .login-card h1 { font-size: 20px; margin: 0 0 4px; color: var(--soil-dark); }
+  .login-sub { font-size: 13px; color: var(--ink-soft); margin: 0 0 22px; }
+  .login-btn {
+    width: 100%; padding: 13px; border: none; border-radius: 12px; font-size: 15px;
+    font-weight: 700; cursor: pointer; margin-bottom: 8px;
+  }
+  .login-btn-citizen { background: var(--soil); color: #fff; }
+  .login-btn-municipal { background: var(--card); color: var(--soil); border: 1.5px solid var(--soil) !important; }
+  .login-hint { font-size: 12px; color: var(--ink-soft); margin: 0 0 18px; }
+  .login-divider { display: flex; align-items: center; gap: 10px; margin: 4px 0 16px; }
+  .login-divider::before, .login-divider::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+  .login-divider span { font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+  .login-error { font-size: 12px; color: #8A2A2A; margin: 8px 0 0; }
+  #municipalPasscodeInput {
+    width: 100%; padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 10px;
+    font-size: 15px; margin-bottom: 8px; font-family: inherit;
+  }
+  .role-badge {
+    display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
+    background: #E9F1EA; color: var(--soil-dark); margin-left: 8px; vertical-align: middle;
+  }
+  #switchRoleBtn {
+    background: none; border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px;
+    font-size: 11px; font-weight: 700; color: var(--ink-soft); cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<!-- SPLASH SCREEN -->
+<div id="splashScreen" class="splash-screen">
+  <div class="splash-content">
+    <div class="splash-icon">🌱</div>
+    <h1 class="splash-title">WasteWise Daporijo</h1>
+    <p class="splash-sub">Prototype built by Vivekananda Public School, Daporijo</p>
+    <p class="splash-tag">NCSC 2026–27</p>
+    <div class="splash-bar"><div class="splash-bar-fill"></div></div>
+  </div>
+</div>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <div class="login-icon">🌿</div>
+    <h1>WasteWise Daporijo</h1>
+    <p class="login-sub">Choose how you'd like to continue</p>
+    <button class="login-btn login-btn-citizen" id="citizenLoginBtn">Continue as Citizen</button>
+    <p class="login-hint">Report a dumping site or check the map — no login needed.</p>
+    <div class="login-divider"><span>or</span></div>
+    <button class="login-btn login-btn-municipal" id="municipalLoginBtnShow">Municipal / School Team Login</button>
+    <div id="municipalPasscodeRow" style="display:none; margin-top:14px; text-align:left;">
+      <input type="password" id="municipalPasscodeInput" placeholder="Enter passcode">
+      <button class="login-btn login-btn-municipal" id="municipalLoginSubmit">Log in</button>
+      <p class="login-error" id="loginError" style="display:none;"></p>
+    </div>
+  </div>
+</div>
+
+<div id="appShell" style="display:none;">
+<div class="wrap">
+  <header style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+    <div>
+      <p class="eyebrow">Vivekananda Public School · Daporijo</p>
+      <h1>WasteWise Daporijo <span class="role-badge" id="roleBadge"></span></h1>
+      <p class="sub">One place to log field data and see where the project stands.</p>
+    </div>
+    <button id="switchRoleBtn" type="button">Switch role</button>
+  </header>
+
+  <nav id="nav">
+    <button data-view="dashboard" class="active">Dashboard</button>
+    <button data-view="household">Household Survey</button>
+    <button data-view="audit">Waste Audit</button>
+    <button data-view="interview">Interview</button>
+    <button data-view="hostel">Hostel Log</button>
+    <button data-view="dumpreport">Report Dump Site</button>
+    <button data-view="dumpmap">Dump Sites Map</button>
+    <button data-view="activitylog">Activity Log</button>
+  </nav>
+
+  <!-- DASHBOARD -->
+  <section id="view-dashboard" class="view active">
+    <div class="refresh-row">
+      <span class="sub" id="lastUpdated">Not loaded yet</span>
+      <button id="refreshBtn" type="button">Refresh</button>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat"><div class="label">Households surveyed</div><div class="value" id="s-hh-n">–</div></div>
+      <div class="stat"><div class="label">Waste audit samples</div><div class="value" id="s-audit-n">–</div></div>
+      <div class="stat"><div class="label">% segregating at source</div><div class="value" id="s-hh-seg">–</div></div>
+      <div class="stat"><div class="label">Interviews conducted</div><div class="value" id="s-int-n">–</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Town Waste Composition</h2>
+      <div class="chart-wrap"><canvas id="chartComposition"></canvas></div>
+      <p class="empty" id="compositionEmpty" style="display:none;">No audit samples logged yet.</p>
+    </div>
+
+    <div class="card">
+      <h2>Hostel Pilot — Per-Capita Disposal (kg/day)</h2>
+      <div class="chart-wrap"><canvas id="chartHostel"></canvas></div>
+      <p class="empty" id="hostelEmpty" style="display:none;">Log baseline and pilot entries to see this comparison.</p>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat"><div class="label">Reduction, baseline → pilot</div><div class="value" id="s-reduction">–</div></div>
+      <div class="stat"><div class="label">Avg. segregation compliance (pilot)</div><div class="value" id="s-compliance">–</div></div>
+    </div>
+  </section>
+
+  <!-- HOUSEHOLD SURVEY -->
+  <section id="view-household" class="view">
+    <form id="form-household">
+      <div class="card">
+        <h2>Household Survey Entry</h2>
+        <div class="row2">
+          <div class="field"><label>Date</label><input type="date" name="date" required></div>
+          <div class="field"><label>Surveyor</label><input type="text" name="surveyor" required></div>
+        </div>
+        <div class="field"><label>Ward / Locality</label><input type="text" name="ward" required></div>
+        <div class="row2">
+          <div class="field"><label>Household size</label><input type="number" name="householdSize" min="1" required></div>
+          <div class="field"><label>Respondent occupation</label><input type="text" name="occupation"></div>
+        </div>
+        <div class="field"><label>Estimated daily waste (kg)</label><input type="number" step="0.1" name="estDailyWaste" required></div>
+        <div class="row2">
+          <div class="field"><label>Segregates at source?</label>
+            <select name="segregates"><option value="N">No</option><option value="Y">Yes</option></select>
+          </div>
+          <div class="field"><label>Willing to pay for collection?</label>
+            <select name="willingToPay"><option value="N">No</option><option value="Y">Yes</option></select>
+          </div>
+        </div>
+        <div class="field"><label>Primary disposal method</label>
+          <select name="disposalMethod">
+            <option>Open dumping</option><option>Municipal collection</option><option>Burning</option>
+            <option>Home composting</option><option>Buried</option><option>Riverside dumping</option><option>Other</option>
+          </select>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Distance to nearest dump point (m)</label><input type="number" name="distanceToDump"></div>
+          <div class="field"><label>Awareness of waste issues (1–5)</label><input type="number" name="awareness" min="1" max="5"></div>
+        </div>
+        <div class="field"><label>Notes</label><textarea name="notes"></textarea></div>
+      </div>
+      <button class="submit" type="submit">Save household entry</button>
+      <div class="status" id="status-household"></div>
+    </form>
+  </section>
+
+  <!-- WASTE AUDIT -->
+  <section id="view-audit" class="view">
+    <form id="form-audit">
+      <div class="card">
+        <h2>Town Waste Audit Entry</h2>
+        <div class="row2">
+          <div class="field"><label>Date</label><input type="date" name="date" required></div>
+          <div class="field"><label>Recorded by</label><input type="text" name="recordedBy" required></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Ward / Location</label><input type="text" name="ward" required></div>
+          <div class="field"><label>Sample source</label>
+            <select name="source"><option>Household</option><option>Market</option><option>Institution (School/Hostel)</option><option>Street/Public Bin</option><option>Commercial</option></select>
+          </div>
+        </div>
+        <div class="field"><label>Total sample weight (kg)</label><input type="number" step="0.1" name="totalWeight" required></div>
+        <div class="row2">
+          <div class="field"><label>Organic / wet (kg)</label><input type="number" step="0.1" name="organic" required></div>
+          <div class="field"><label>Plastic (kg)</label><input type="number" step="0.1" name="plastic" required></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Paper / cardboard (kg)</label><input type="number" step="0.1" name="paper" required></div>
+          <div class="field"><label>Glass (kg)</label><input type="number" step="0.1" name="glass" required></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Metal (kg)</label><input type="number" step="0.1" name="metal" required></div>
+          <div class="field"><label>Other / non-recyclable (kg)</label><input type="number" step="0.1" name="other" required></div>
+        </div>
+        <div class="field"><label>Notes</label><textarea name="notes"></textarea></div>
+      </div>
+      <button class="submit" type="submit">Save audit entry</button>
+      <div class="status" id="status-audit"></div>
+    </form>
+  </section>
+
+  <!-- STAKEHOLDER INTERVIEW -->
+  <section id="view-interview" class="view">
+    <form id="form-interview">
+      <div class="card">
+        <h2>Stakeholder Interview Entry</h2>
+        <div class="row2">
+          <div class="field"><label>Date</label><input type="date" name="date" required></div>
+          <div class="field"><label>Interviewer</label><input type="text" name="interviewer" required></div>
+        </div>
+        <div class="field"><label>Name / designation</label><input type="text" name="nameDesignation" required></div>
+        <div class="field"><label>Organization</label><input type="text" name="organization"></div>
+        <div class="field"><label>Key topic</label><input type="text" name="topic" required></div>
+        <div class="field"><label>Summary of response</label><textarea name="summary" required></textarea></div>
+        <div class="field"><label>Follow-up needed?</label><input type="text" name="followUp" placeholder="e.g. Y – ask about budget"></div>
+      </div>
+      <button class="submit" type="submit">Save interview entry</button>
+      <div class="status" id="status-interview"></div>
+    </form>
+  </section>
+
+  <!-- HOSTEL LOG -->
+  <section id="view-hostel" class="view">
+    <form id="form-hostel">
+      <div class="card">
+        <h2>Hostel Daily Log</h2>
+        <div class="row2">
+          <div class="field"><label>Date</label><input type="date" name="date" required></div>
+          <div class="field"><label>Recorded by</label><input type="text" name="recordedBy" required></div>
+        </div>
+        <div class="field"><label>Phase</label>
+          <select name="phase" id="hostelPhase"><option>Baseline</option><option>Pilot</option></select>
+        </div>
+        <div class="field" id="complianceField">
+          <label>Segregation compliance (% of residents, pilot only)</label>
+          <div class="slider-row">
+            <input type="range" name="segregationCompliance" id="complianceSlider" min="0" max="100" value="70">
+            <span class="slider-val" id="complianceVal">70%</span>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Wet / organic waste (kg)</label><input type="number" step="0.1" name="wetOrganic" required></div>
+          <div class="field"><label>Dry / recyclable waste (kg)</label><input type="number" step="0.1" name="dryRecyclable" required></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Waste sent to disposal (kg)</label><input type="number" step="0.1" name="disposal" required></div>
+          <div class="field"><label>Number of residents</label><input type="number" name="residents" value="110" required></div>
+        </div>
+        <div class="field"><label>Issues observed</label><textarea name="issues"></textarea></div>
+        <div class="field"><label>Notes</label><textarea name="notes"></textarea></div>
+      </div>
+      <button class="submit" type="submit">Save hostel entry</button>
+      <div class="status" id="status-hostel"></div>
+    </form>
+  </section>
+
+  <!-- REPORT DUMP SITE -->
+  <section id="view-dumpreport" class="view">
+    <form id="form-dumping">
+      <div class="card">
+        <h2>Report / Update a Dump Site</h2>
+        <div class="row2">
+          <div class="field"><label>Date</label><input type="date" name="date" required></div>
+          <div class="field"><label>Recorded by</label><input type="text" name="recordedBy" required></div>
+        </div>
+        <div class="field">
+          <label>Site ID</label>
+          <input type="text" name="siteId" id="siteIdInput" placeholder="Leave blank for a new site, or type e.g. DS-001 to update a known one" list="knownSiteIds">
+          <datalist id="knownSiteIds"></datalist>
+          <p class="hint">Revisiting a spot you've already logged? Reuse its Site ID so the map can show how it changed over time.</p>
+        </div>
+        <div class="field">
+          <label>Location</label>
+          <button type="button" class="submit" id="gpsBtn" style="background:#8C6D3F;">Capture GPS location</button>
+          <p class="hint" id="gpsStatus">Not captured yet.</p>
+          <div class="row2" style="margin-top:8px;">
+            <div class="field"><label>Latitude</label><input type="number" step="0.000001" name="lat" id="latInput" readonly></div>
+            <div class="field"><label>Longitude</label><input type="number" step="0.000001" name="lng" id="lngInput" readonly></div>
+          </div>
+        </div>
+        <div class="field"><label>Status</label>
+          <select name="status">
+            <option value="New">New site</option>
+            <option value="Increased">Increased since last visit</option>
+            <option value="Reduced">Reduced since last visit</option>
+            <option value="Cleared">Cleared</option>
+          </select>
+        </div>
+        <div class="field"><label>Photo</label>
+          <input type="file" accept="image/*" capture="environment" id="dumpPhotoInput">
+          <p class="hint" id="photoStatus">No photo selected.</p>
+          <img id="photoPreview" style="display:none; max-width:100%; border-radius:10px; margin-top:8px; border:1px solid var(--line);">
+        </div>
+        <div class="field"><label>Description</label><textarea name="description" placeholder="What's there, roughly how much, near what landmark"></textarea></div>
+        <div class="field"><label>Notes</label><textarea name="notes"></textarea></div>
+      </div>
+      <button class="submit" type="submit">Save dump site entry</button>
+      <div class="status" id="status-dumping"></div>
+    </form>
+  </section>
+
+  <!-- DUMP SITES MAP -->
+  <section id="view-dumpmap" class="view">
+    <div class="card">
+      <h2>Illegal Dumping Sites — Live Map</h2>
+      <p class="hint" style="margin-bottom:10px;">Pins show each site's most recent status. Tap a pin for its photo and full history.</p>
+      <div id="dumpMapContainer" style="height:420px; border-radius:12px; overflow:hidden; border:1px solid var(--line);"></div>
+      <div style="display:flex; gap:14px; margin-top:10px; flex-wrap:wrap; font-size:12px; color:var(--ink-soft);">
+        <span>● New/Active</span>
+        <span>● Increased</span>
+        <span>● Reduced</span>
+        <span>● Cleared</span>
+      </div>
+    </div>
+    <div class="card" id="siteHistoryCard" style="display:none;">
+      <h2>Site History — <span id="historySiteId"></span></h2>
+      <div id="siteHistoryList"></div>
+    </div>
+  </section>
+
+  <!-- ACTIVITY LOG -->
+  <section id="view-activitylog" class="view">
+    <div class="refresh-row">
+      <span class="sub" id="activityUpdated">Not loaded yet</span>
+      <button id="activityRefreshBtn" type="button">Refresh</button>
+    </div>
+    <div class="card">
+      <h2>Who Did What</h2>
+      <p class="hint" style="margin-bottom:10px;">Every submission across all forms, newest first — pulled from each entry's own name field, not a separate login.</p>
+      <div id="activitySummary" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;"></div>
+      <div id="activityList"></div>
+      <p class="empty" id="activityEmpty" style="display:none;">No activity logged yet.</p>
+    </div>
+  </section>
+
+</div>
+</div>
+
+<script>
+  // Paste your Apps Script Web App deployment URL here (ends in /exec)
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzGR-VTlSX894cpCdBxnn5UH2joJBmE-uefDGUvvurHj_XKBrPz27SxGG25xRhKT_Kd/exec";
+  // Paste your Google Maps JavaScript API key here
+  const GOOGLE_MAPS_API_KEY = "PASTE_YOUR_GOOGLE_MAPS_API_KEY_HERE";
+  // Default map center — approximate Daporijo town center; adjust if needed
+  const DEFAULT_MAP_CENTER = { lat: 27.983, lng: 94.233 };
+
+  // ---------- Splash screen ----------
+  // The Municipal role passcode is checked server-side against the
+  // Login tab in the Google Sheet (action=checkPasscode) — nothing
+  // secret is stored in this file. Still a lightweight, prototype-grade
+  // check (no real session/auth system), appropriate for a school demo.
+  const CITIZEN_VIEWS = ['dumpreport', 'dumpmap'];
+  let currentRole = null;
+
+  const splashScreen = document.getElementById('splashScreen');
+  const loginScreen = document.getElementById('loginScreen');
+  const appShell = document.getElementById('appShell');
+
+  function dismissSplash() {
+    splashScreen.style.display = 'none';
+    loginScreen.style.display = 'flex';
+  }
+  const splashTimer = setTimeout(dismissSplash, 4600);
+  splashScreen.addEventListener('click', () => { clearTimeout(splashTimer); dismissSplash(); });
+
+  // ---------- Login / role selection ----------
+  document.getElementById('citizenLoginBtn').addEventListener('click', () => enterApp('citizen'));
+  document.getElementById('municipalLoginBtnShow').addEventListener('click', () => {
+    document.getElementById('municipalPasscodeRow').style.display = 'block';
+    document.getElementById('municipalPasscodeInput').focus();
+  });
+  document.getElementById('municipalLoginSubmit').addEventListener('click', submitMunicipalLogin);
+  document.getElementById('municipalPasscodeInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitMunicipalLogin();
+  });
+  function submitMunicipalLogin() {
+    const val = document.getElementById('municipalPasscodeInput').value;
+    const err = document.getElementById('loginError');
+    const btn = document.getElementById('municipalLoginSubmit');
+    if (WEB_APP_URL.includes('PASTE_YOUR')) {
+      err.textContent = 'Setup needed: paste the Apps Script deployment URL into index.html first.';
+      err.style.display = 'block';
+      return;
+    }
+    if (!val) {
+      err.textContent = 'Enter a passcode.';
+      err.style.display = 'block';
+      return;
+    }
+    err.style.display = 'none';
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Checking...';
+    jsonp(WEB_APP_URL + '?action=checkPasscode&passcode=' + encodeURIComponent(val))
+      .then(data => {
+        if (data.valid) {
+          enterApp('municipal');
+        } else {
+          err.textContent = 'Incorrect passcode — check with your project guide.';
+          err.style.display = 'block';
+        }
+      })
+      .catch(() => {
+        err.textContent = 'Could not verify — check your connection and try again.';
+        err.style.display = 'block';
+      })
+      .finally(() => {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      });
+  }
+  document.getElementById('switchRoleBtn').addEventListener('click', () => {
+    appShell.style.display = 'none';
+    document.getElementById('municipalPasscodeInput').value = '';
+    document.getElementById('municipalPasscodeRow').style.display = 'none';
+    document.getElementById('loginError').style.display = 'none';
+    loginScreen.style.display = 'flex';
+  });
+
+  function enterApp(role) {
+    currentRole = role;
+    loginScreen.style.display = 'none';
+    appShell.style.display = 'block';
+    const badge = document.getElementById('roleBadge');
+    badge.textContent = role === 'municipal' ? 'Municipal / Team' : 'Citizen';
+    applyRoleVisibility(role);
+  }
+
+  function applyRoleVisibility(role) {
+    navButtons.forEach(btn => {
+      const allowed = role === 'municipal' || CITIZEN_VIEWS.includes(btn.dataset.view);
+      btn.style.display = allowed ? '' : 'none';
+    });
+    const defaultView = role === 'municipal' ? 'dashboard' : 'dumpreport';
+    navButtons.forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    const defaultBtn = document.querySelector('#nav button[data-view="' + defaultView + '"]');
+    if (defaultBtn) defaultBtn.classList.add('active');
+    document.getElementById('view-' + defaultView).classList.add('active');
+    if (defaultView === 'dashboard') loadDashboard();
+  }
+
+  // ---------- Tab navigation ----------
+  const navButtons = document.querySelectorAll('#nav button');
+  navButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      navButtons.forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('view-' + btn.dataset.view).classList.add('active');
+      if (btn.dataset.view === 'dashboard') loadDashboard();
+      if (btn.dataset.view === 'dumpreport') loadKnownSiteIds();
+      if (btn.dataset.view === 'dumpmap') loadDumpMap();
+      if (btn.dataset.view === 'activitylog') loadActivityLog();
+    });
+  });
+
+  // default all date fields to today
+  document.querySelectorAll('input[type=date]').forEach(el => el.value = new Date().toISOString().slice(0,10));
+
+  // ---------- Hostel compliance slider + baseline/pilot toggle ----------
+  const complianceSlider = document.getElementById('complianceSlider');
+  const complianceVal = document.getElementById('complianceVal');
+  complianceSlider.addEventListener('input', () => complianceVal.textContent = complianceSlider.value + '%');
+  const complianceField = document.getElementById('complianceField');
+  document.getElementById('hostelPhase').addEventListener('change', (e) => {
+    complianceField.style.display = e.target.value === 'Pilot' ? 'block' : 'none';
+  });
+  complianceField.style.display = 'none'; // default phase is Baseline
+
+  // ---------- Generic form submit handler ----------
+  function wireForm(formId, type, statusId, extra) {
+    const form = document.getElementById(formId);
+    const status = document.getElementById(statusId);
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (WEB_APP_URL.includes('PASTE_YOUR')) {
+        status.className = 'status err';
+        status.textContent = 'Setup needed: paste the Apps Script deployment URL into index.html.';
+        return;
+      }
+      const btn = form.querySelector('button.submit');
+      btn.disabled = true;
+      const originalText = btn.textContent;
+      btn.textContent = 'Saving...';
+
+      const fd = new FormData(form);
+      const payload = { type };
+      fd.forEach((v, k) => payload[k] = v);
+      if (extra) Object.assign(payload, extra(fd));
+
+      try {
+        await fetch(WEB_APP_URL, {
+          method: 'POST', mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload),
+        });
+        status.className = 'status ok';
+        status.textContent = 'Saved.';
+        form.reset();
+        document.querySelectorAll('input[type=date]').forEach(el => el.value = new Date().toISOString().slice(0,10));
+        if (type === 'hostel') { complianceSlider.value = 70; complianceVal.textContent = '70%'; complianceField.style.display = 'none'; document.querySelector('[name=residents]').value = 110; }
+      } catch (err) {
+        status.className = 'status err';
+        status.textContent = 'Could not save — check your connection and try again.';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    });
+  }
+  wireForm('form-household', 'household', 'status-household');
+  wireForm('form-audit', 'audit', 'status-audit');
+  wireForm('form-interview', 'interview', 'status-interview');
+  wireForm('form-hostel', 'hostel', 'status-hostel');
+
+  // ---------- Dump Site: GPS capture ----------
+  const gpsBtn = document.getElementById('gpsBtn');
+  const gpsStatus = document.getElementById('gpsStatus');
+  const latInput = document.getElementById('latInput');
+  const lngInput = document.getElementById('lngInput');
+  gpsBtn.addEventListener('click', () => {
+    if (!navigator.geolocation) {
+      gpsStatus.textContent = 'GPS not supported on this device/browser.';
+      return;
+    }
+    gpsStatus.textContent = 'Locating...';
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        latInput.value = pos.coords.latitude.toFixed(6);
+        lngInput.value = pos.coords.longitude.toFixed(6);
+        gpsStatus.textContent = 'Captured (accuracy ~' + Math.round(pos.coords.accuracy) + 'm).';
+      },
+      (err) => { gpsStatus.textContent = 'Could not get location — check location permission and try again.'; },
+      { enableHighAccuracy: true, timeout: 12000 }
+    );
+  });
+
+  // ---------- Dump Site: photo capture + client-side compression ----------
+  let currentPhotoBase64 = '';
+  const dumpPhotoInput = document.getElementById('dumpPhotoInput');
+  const photoStatus = document.getElementById('photoStatus');
+  const photoPreview = document.getElementById('photoPreview');
+  dumpPhotoInput.addEventListener('change', () => {
+    const file = dumpPhotoInput.files[0];
+    if (!file) { currentPhotoBase64 = ''; photoStatus.textContent = 'No photo selected.'; photoPreview.style.display = 'none'; return; }
+    photoStatus.textContent = 'Processing photo...';
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 1000;
+        const scale = Math.min(1, maxW / img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        currentPhotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
+        photoPreview.src = currentPhotoBase64;
+        photoPreview.style.display = 'block';
+        photoStatus.textContent = 'Photo ready (' + Math.round(currentPhotoBase64.length / 1024) + ' KB).';
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  wireForm('form-dumping', 'dumping', 'status-dumping', () => ({ photoBase64: currentPhotoBase64 }));
+  // extra reset specific to the dumping form after a successful save
+  document.getElementById('form-dumping').addEventListener('submit', () => {
+    setTimeout(() => {
+      const statusEl = document.getElementById('status-dumping');
+      if (statusEl.classList.contains('ok')) {
+        currentPhotoBase64 = '';
+        photoPreview.style.display = 'none';
+        photoStatus.textContent = 'No photo selected.';
+        gpsStatus.textContent = 'Not captured yet.';
+      }
+    }, 50);
+  });
+
+  // ---------- Dump Site: known Site IDs for the datalist ----------
+  let siteIdsLoaded = false;
+  async function loadKnownSiteIds() {
+    if (siteIdsLoaded || WEB_APP_URL.includes('PASTE_YOUR')) return;
+    try {
+      const data = await jsonp(WEB_APP_URL + '?action=dumpingSites');
+      const ids = [...new Set((data.sites || []).map(s => s.SiteID).filter(Boolean))];
+      const datalist = document.getElementById('knownSiteIds');
+      datalist.innerHTML = ids.map(id => `<option value="${id}">`).join('');
+      siteIdsLoaded = true;
+    } catch (err) { /* non-critical, ignore */ }
+  }
+
+  // ---------- Dump Sites Map (Google Maps) ----------
+  let dumpMapLoaded = false, dumpMap, dumpInfoWindow;
+  const STATUS_COLORS = { New: '#E08E2B', Increased: '#C0392B', Reduced: '#D4AC0D', Cleared: '#27AE60' };
+
+  function loadDumpMap() {
+    if (GOOGLE_MAPS_API_KEY.includes('PASTE_YOUR')) {
+      document.getElementById('dumpMapContainer').innerHTML =
+        '<div style="padding:20px; font-size:13px; color:#8A2A2A;">Setup needed: paste your Google Maps API key into index.html.</div>';
+      return;
+    }
+    if (dumpMapLoaded) { refreshDumpMapData(); return; }
+    dumpMapLoaded = true;
+    window.initDumpMap = () => {
+      dumpMap = new google.maps.Map(document.getElementById('dumpMapContainer'), {
+        center: DEFAULT_MAP_CENTER, zoom: 14,
+      });
+      dumpInfoWindow = new google.maps.InfoWindow();
+      refreshDumpMapData();
+    };
+    const script = document.createElement('script');
+    script.src = 'https://maps.googleapis.com/maps/api/js?key=' + GOOGLE_MAPS_API_KEY + '&callback=initDumpMap';
+    script.async = true;
+    document.body.appendChild(script);
+  }
+
+  async function refreshDumpMapData() {
+    if (WEB_APP_URL.includes('PASTE_YOUR')) return;
+    try {
+      const data = await jsonp(WEB_APP_URL + '?action=dumpingSites');
+      const sites = data.sites || [];
+      // group all observations by SiteID
+      const bySite = {};
+      sites.forEach(s => { (bySite[s.SiteID] = bySite[s.SiteID] || []).push(s); });
+
+      Object.keys(bySite).forEach(siteId => {
+        const history = bySite[siteId].slice().sort((a, b) => new Date(a.Date) - new Date(b.Date));
+        const latest = history[history.length - 1];
+        const color = STATUS_COLORS[latest.Status] || '#666666';
+        const marker = new google.maps.Marker({
+          position: { lat: Number(latest.Latitude), lng: Number(latest.Longitude) },
+          map: dumpMap,
+          title: siteId + ' — ' + latest.Status,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 9,
+            fillColor: color, fillOpacity: 1,
+            strokeColor: '#FFFFFF', strokeWeight: 2,
+          },
+        });
+        marker.addListener('click', () => {
+          const photoHtml = latest.PhotoURL ? `<img src="${latest.PhotoURL}" style="width:180px;border-radius:8px;display:block;margin-bottom:6px;">` : '';
+          dumpInfoWindow.setContent(
+            `<div style="font-family:sans-serif;max-width:200px;">${photoHtml}
+             <strong>${siteId}</strong> — ${latest.Status}<br>
+             <span style="font-size:12px;color:#666;">${latest.Date}</span><br>
+             <span style="font-size:12px;">${latest.Description || ''}</span></div>`
+          );
+          dumpInfoWindow.open(dumpMap, marker);
+          showSiteHistory(siteId, history);
+        });
+      });
+
+      if (Object.keys(bySite).length === 0) {
+        document.getElementById('dumpMapContainer').insertAdjacentHTML('beforeend',
+          '<p style="padding:10px;font-size:13px;color:#666;">No dump sites logged yet.</p>');
+      }
+    } catch (err) { /* map stays usable even if data fetch fails */ }
+  }
+
+  function showSiteHistory(siteId, history) {
+    const card = document.getElementById('siteHistoryCard');
+    const list = document.getElementById('siteHistoryList');
+    document.getElementById('historySiteId').textContent = siteId;
+    list.innerHTML = history.slice().reverse().map(h => `
+      <div style="display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--line);">
+        ${h.PhotoURL ? `<img src="${h.PhotoURL}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;flex-shrink:0;">` : ''}
+        <div>
+          <div style="font-weight:700; font-size:13px; color:${STATUS_COLORS[h.Status] || '#333'};">${h.Status}</div>
+          <div style="font-size:12px; color:var(--ink-soft);">${h.Date} · ${h.RecordedBy || ''}</div>
+          <div style="font-size:13px; margin-top:2px;">${h.Description || ''}</div>
+        </div>
+      </div>`).join('');
+    card.style.display = 'block';
+  }
+
+  // ---------- Activity Log ----------
+  async function loadActivityLog() {
+    const updated = document.getElementById('activityUpdated');
+    const list = document.getElementById('activityList');
+    const empty = document.getElementById('activityEmpty');
+    const summary = document.getElementById('activitySummary');
+    updated.textContent = 'Loading...';
+    if (WEB_APP_URL.includes('PASTE_YOUR')) {
+      updated.textContent = 'Setup needed: paste the Apps Script URL into index.html.';
+      return;
+    }
+    try {
+      const data = await jsonp(WEB_APP_URL + '?action=activityLog');
+      const entries = data.entries || [];
+      updated.textContent = 'Updated ' + new Date().toLocaleString();
+
+      if (entries.length === 0) {
+        empty.style.display = 'block';
+        list.innerHTML = '';
+        summary.innerHTML = '';
+        return;
+      }
+      empty.style.display = 'none';
+
+      // per-person entry counts, for a quick "who's contributing" view
+      const counts = {};
+      entries.forEach(e => { const u = e.User || '(no name given)'; counts[u] = (counts[u] || 0) + 1; });
+      summary.innerHTML = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, n]) => `<span class="stat" style="padding:8px 12px;"><span class="label" style="margin-bottom:2px;">${name}</span><span class="value" style="font-size:16px;">${n} entr${n === 1 ? 'y' : 'ies'}</span></span>`)
+        .join('');
+
+      list.innerHTML = entries.map(e => {
+        const ts = e.Timestamp ? new Date(e.Timestamp).toLocaleString() : '';
+        return `<div style="padding:10px 0; border-bottom:1px solid var(--line);">
+          <div style="display:flex; justify-content:space-between; gap:10px;">
+            <strong style="font-size:13px; color:var(--soil-dark);">${e.Type || ''}</strong>
+            <span style="font-size:12px; color:var(--ink-soft);">${ts}</span>
+          </div>
+          <div style="font-size:13px;">${e.User || '(no name given)'}${e.Details ? ' — ' + e.Details : ''}</div>
+        </div>`;
+      }).join('');
+    } catch (err) {
+      updated.textContent = 'Could not load — check the deployment URL and try again.';
+    }
+  }
+  document.getElementById('activityRefreshBtn').addEventListener('click', loadActivityLog);
+
+  // ---------- Dashboard (JSONP GET, since Apps Script has no CORS headers) ----------
+  let compositionChart, hostelChart;
+
+  function jsonp(url) {
+    return new Promise((resolve, reject) => {
+      const cbName = 'cb_' + Math.random().toString(36).slice(2);
+      window[cbName] = (data) => { resolve(data); cleanup(); };
+      const script = document.createElement('script');
+      script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName;
+      script.onerror = () => { reject(new Error('Network error')); cleanup(); };
+      function cleanup() { document.body.removeChild(script); delete window[cbName]; }
+      document.body.appendChild(script);
+      setTimeout(() => { if (window[cbName]) { reject(new Error('Timed out')); cleanup(); } }, 10000);
+    });
+  }
+
+  function pct(v) { return (v === null || v === undefined || isNaN(v)) ? '–' : (v * 100).toFixed(0) + '%'; }
+  function num(v, d) { return (v === null || v === undefined || isNaN(v)) ? '–' : v.toFixed(d === undefined ? 1 : d); }
+
+  async function loadDashboard() {
+    document.getElementById('lastUpdated').textContent = 'Loading...';
+    if (WEB_APP_URL.includes('PASTE_YOUR')) {
+      document.getElementById('lastUpdated').textContent = 'Setup needed: paste the Apps Script URL into index.html.';
+      return;
+    }
+    try {
+      const data = await jsonp(WEB_APP_URL + '?action=dashboard');
+      document.getElementById('lastUpdated').textContent = 'Updated ' + new Date(data.generatedAt).toLocaleString();
+
+      document.getElementById('s-hh-n').textContent = data.households.n;
+      document.getElementById('s-audit-n').textContent = data.audits.n;
+      document.getElementById('s-hh-seg').textContent = pct(data.households.pctSegregating);
+      document.getElementById('s-int-n').textContent = data.interviews.n;
+      document.getElementById('s-reduction').textContent = pct(data.hostel.pctReductionPerCapita);
+      document.getElementById('s-compliance').textContent = pct(data.hostel.pilotAvgCompliance);
+
+      // Composition chart
+      const compEmpty = document.getElementById('compositionEmpty');
+      if (data.audits.n > 0 && data.audits.avgPctOrganic !== null) {
+        compEmpty.style.display = 'none';
+        const organic = data.audits.avgPctOrganic || 0;
+        const recyclable = data.audits.avgPctRecyclable || 0;
+        const other = Math.max(0, 1 - organic - recyclable);
+        if (compositionChart) compositionChart.destroy();
+        compositionChart = new Chart(document.getElementById('chartComposition'), {
+          type: 'doughnut',
+          data: {
+            labels: ['Organic/Wet', 'Recyclable (plastic/paper/glass/metal)', 'Other'],
+            datasets: [{ data: [organic, recyclable, other], backgroundColor: ['#2E5339', '#8C6D3F', '#C9C2AE'] }],
+          },
+          options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } },
+        });
+      } else {
+        compEmpty.style.display = 'block';
+        if (compositionChart) { compositionChart.destroy(); compositionChart = null; }
+      }
+
+      // Hostel baseline vs pilot chart
+      const hostelEmpty = document.getElementById('hostelEmpty');
+      if (data.hostel.baselineDays > 0 || data.hostel.pilotDays > 0) {
+        hostelEmpty.style.display = 'none';
+        if (hostelChart) hostelChart.destroy();
+        hostelChart = new Chart(document.getElementById('chartHostel'), {
+          type: 'bar',
+          data: {
+            labels: ['Baseline', 'Pilot'],
+            datasets: [{
+              label: 'Avg per-capita disposal (kg/day)',
+              data: [data.hostel.baselineAvgPerCapitaKg || 0, data.hostel.pilotAvgPerCapitaKg || 0],
+              backgroundColor: ['#8C6D3F', '#2E5339'],
+            }],
+          },
+          options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+        });
+      } else {
+        hostelEmpty.style.display = 'block';
+        if (hostelChart) { hostelChart.destroy(); hostelChart = null; }
+      }
+    } catch (err) {
+      document.getElementById('lastUpdated').textContent = 'Could not load — check the deployment URL and try again.';
+    }
+  }
+
+  document.getElementById('refreshBtn').addEventListener('click', loadDashboard);
+  loadDashboard();
+</script>
+</body>
+</html>

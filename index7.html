@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WasteWise Daporijo</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --soil: #2E5339;
+    --soil-dark: #1F3B2C;
+    --compost: #8C6D3F;
+    --paper: #FBF8F2;
+    --card: #FFFFFF;
+    --ink: #26302B;
+    --ink-soft: #63706A;
+    --line: #E3E0D6;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 16px 16px 60px; }
+  header {
+    padding: 20px 4px 16px;
+    border-bottom: 2px solid var(--soil);
+    margin-bottom: 16px;
+  }
+  .eyebrow { text-transform: uppercase; letter-spacing: 0.12em; font-size: 11px; color: var(--compost); font-weight: 700; margin: 0 0 6px; }
+  h1 { font-size: 22px; margin: 0 0 4px; color: var(--soil-dark); letter-spacing: -0.01em; }
+  .sub { font-size: 13px; color: var(--ink-soft); margin: 0; }
+
+  nav { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 18px; padding-bottom: 2px; }
+  nav button {
+    flex: 0 0 auto; padding: 9px 14px; border-radius: 999px; border: 1.5px solid var(--line);
+    background: var(--card); color: var(--ink-soft); font-size: 13px; font-weight: 600; cursor: pointer;
+    white-space: nowrap;
+  }
+  nav button.active { background: var(--soil); border-color: var(--soil); color: #fff; }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 18px 16px; margin-bottom: 14px;
+  }
+  .card h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--soil); margin: 0 0 14px; font-weight: 700; }
+
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .field { margin-bottom: 16px; }
+  .field:last-child { margin-bottom: 0; }
+  input[type=text], input[type=date], input[type=number], select, textarea {
+    width: 100%; padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 10px;
+    font-size: 15px; font-family: inherit; background: var(--paper); color: var(--ink);
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--soil); }
+  textarea { min-height: 56px; resize: vertical; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .slider-row { display: flex; align-items: center; gap: 12px; }
+  input[type=range] { flex: 1; accent-color: var(--soil); }
+  .slider-val { min-width: 46px; text-align: right; font-weight: 700; color: var(--soil-dark); font-size: 16px; }
+
+  button.submit {
+    width: 100%; padding: 15px; border: none; border-radius: 12px; background: var(--soil);
+    color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;
+  }
+  button.submit:active { background: var(--soil-dark); }
+  button.submit:disabled { opacity: 0.6; }
+
+  .status { margin-top: 12px; padding: 12px 14px; border-radius: 10px; font-size: 14px; display: none; }
+  .status.ok { display: block; background: #E9F1EA; color: var(--soil-dark); border: 1px solid #BFD9C4; }
+  .status.err { display: block; background: #FBEAEA; color: #8A2A2A; border: 1px solid #E9BEBE; }
+
+  /* Dashboard */
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+  .stat {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 14px; text-align: left;
+  }
+  .stat .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); font-weight: 700; margin-bottom: 6px; }
+  .stat .value { font-size: 24px; font-weight: 800; color: var(--soil-dark); }
+  .stat .value.muted { color: var(--ink-soft); font-size: 15px; font-weight: 600; }
+  .stat .progress { font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
+  .sentence-card p { font-size: 14px; line-height: 1.5; margin: 0 0 10px; color: var(--ink); }
+  .sentence-card p:last-child { margin-bottom: 0; }
+  .barrier-row { margin-bottom: 10px; }
+  .barrier-row .barrier-label { font-size: 12px; color: var(--ink-soft); margin-bottom: 3px; }
+  .barrier-bar-track { background: var(--line); border-radius: 999px; height: 10px; overflow: hidden; }
+  .barrier-bar-fill { background: var(--compost); height: 100%; border-radius: 999px; }
+  .site-row {
+    display: flex; align-items: center; gap: 12px; padding: 10px 8px; border-radius: 10px;
+    cursor: pointer; border-bottom: 1px solid var(--line);
+  }
+  .site-row:last-child { border-bottom: none; }
+  .site-row:hover { background: var(--paper); }
+  .site-row-thumb { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: var(--line); }
+  .site-row-info { flex: 1; min-width: 0; }
+  .site-row-title { font-weight: 700; font-size: 13px; color: var(--ink); }
+  .site-row-date { font-size: 11px; color: var(--ink-soft); }
+  .site-row-badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; color: #fff; flex-shrink: 0; }
+  .chart-wrap { position: relative; height: 220px; }
+  .refresh-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .refresh-row button { background: none; border: 1.5px solid var(--line); border-radius: 8px; padding: 7px 12px; font-size: 12px; font-weight: 700; color: var(--soil); cursor: pointer; }
+  .empty { font-size: 13px; color: var(--ink-soft); padding: 8px 0; }
+
+  /* ---------- Splash screen ---------- */
+  .splash-screen {
+    position: fixed; inset: 0; z-index: 9999;
+    background: linear-gradient(160deg, var(--soil-dark), var(--soil));
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+    color: #fff; text-align: center; padding: 20px; cursor: pointer;
+    animation: splashFadeOut 0.6s ease 4s forwards;
+  }
+  .splash-content { animation: splashRise 0.9s ease; }
+  .splash-icon { font-size: 54px; animation: splashPulse 1.8s ease-in-out infinite; }
+  .splash-title { font-size: 28px; font-weight: 800; margin: 12px 0 6px; letter-spacing: -0.01em; }
+  .splash-sub { font-size: 13px; opacity: 0.88; margin: 0 0 8px; max-width: 320px; }
+  .splash-tag { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.6; margin: 0 0 26px; }
+  .splash-bar { width: 200px; height: 4px; background: rgba(255,255,255,0.25); border-radius: 999px; overflow: hidden; margin: 0 auto; }
+  .splash-bar-fill { height: 100%; background: #fff; width: 0%; animation: splashBarFill 3.6s ease forwards; }
+  @keyframes splashRise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes splashPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+  @keyframes splashBarFill { from { width: 0%; } to { width: 100%; } }
+  @keyframes splashFadeOut { from { opacity: 1; visibility: visible; } to { opacity: 0; visibility: hidden; } }
+
+  /* ---------- Login screen ---------- */
+  .login-screen {
+    position: fixed; inset: 0; z-index: 9998; background: var(--paper);
+    display: none; align-items: center; justify-content: center; padding: 20px;
+  }
+  .login-card {
+    max-width: 360px; width: 100%; background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 32px 26px; text-align: center;
+  }
+  .login-icon { font-size: 38px; margin-bottom: 8px; }
+  .login-card h1 { font-size: 20px; margin: 0 0 4px; color: var(--soil-dark); }
+  .login-sub { font-size: 13px; color: var(--ink-soft); margin: 0 0 22px; }
+  .login-btn {
+    width: 100%; padding: 13px; border: none; border-radius: 12px; font-size: 15px;
+    font-weight: 700; cursor: pointer; margin-bottom: 8px;
+  }
+  .login-btn-citizen { background: var(--soil); color: #fff; }
+  .login-btn-municipal { background: var(--card); color: var(--soil); border: 1.5px solid var(--soil) !important; }
+  .login-hint { font-size: 12px; color: var(--ink-soft); margin: 0 0 18px; }
+  .login-divider { display: flex; align-items: center; gap: 10px; margin: 4px 0 16px; }
+  .login-divider::before, .login-divider::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+  .login-divider span { font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+  .login-error { font-size: 12px; color: #8A2A2A; margin: 8px 0 0; }
+  #municipalPasscodeInput {
+    width: 100%; padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 10px;
+    font-size: 15px; margin-bottom: 8px; font-family: inherit;
+  }
+  .role-badge {
+    display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
+    background: #E9F1EA; color: var(--soil-dark); margin-left: 8px; vertical-align: middle;
+  }
+  #switchRoleBtn {
+    background: none; border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px;
+    font-size: 11px; font-weight: 700; color: var(--ink-soft); cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<!-- SPLASH SCREEN -->
+<div id="splashScreen" class="splash-screen">
+  <div class="splash-content">
+    <div class="splash-icon">🌱</div>
+    <h1 class="splash-title">WasteWise Daporijo</h1>
+    <p class="splash-sub">Prototype built by Vivekananda Public School, Daporijo</p>
+    <p class="splash-tag">NCSC 2026–27</p>
+    <div class="splash-bar"><div class="splash-bar-fill"></div></div>
+  </div>
+</div>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <div class="login-icon">🌿</div>
+    <h1>WasteWise Daporijo</h1>
+    <p class="login-sub">Choose how you'd like to continue</p>
+    <button class="login-btn login-btn-citizen" id="citizenLoginBtn">Continue as Citizen</button>
+    <p class="login-hint">Report a dumping site or check the map — no login needed.</p>
+    <div class="login-divider"><span>or</span></div>
+    <button class="login-btn login-btn-municipal" id="municipalLoginBtnShow">Municipal / School Team Login</button>
+    <div id="municipalPasscodeRow" style="display:none; margin-top:14px; text-align:left;">
+      <input type="password" id="municipalPasscodeInput" placeholder="Enter passcode">
+      <button class="login-btn login-btn-municipal" id="municipalLoginSubmit">Log in</button>
+      <p class="login-error" id="loginError" style="display:none;"></p>
+    </div>
+  </div>
+</div>
+
+<div id="appShell" style="display:none;">
+<div class="wrap">
+  <header style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+    <div>
+      <p class="eyebrow">Vivekananda Public School · Daporijo</p>
+      <h1>WasteWise Daporijo <span class="role-badge" id="roleBadge"></span></h1>
+      <p class="sub">One place to log field data and see where the project stands.</p>
+    </div>
+    <button id="switchRoleBtn" type="button">Switch role</button>
+  </header>
+
+  <nav id="nav">
+    <button data-view="dashboard" class="active">Dashboard</button>
+    <button data-view="household">Household Survey</button>
+    <button data-view="audit">Waste Audit</button>
+    <button data-view="interview">Interview</button>
+    <button data-view="hostel">Hostel Log</button>
+    <button data-view="householddaily">Household Daily Log</button>
+    <button data-view="dumpreport">Report Dump Site</button>
+    <button data-view="dumpmap">Dump Sites Map</button>
+    <button data-view="identifywaste">Identify Waste</button>
+    <button data-view="activitylog">Activity Log</button>
+  </nav>
+
+  <!-- DASHBOARD -->
+  <section id="view-dashboard" class="view active">
+    <div class="refresh-row">
+      <span class="sub" id="lastUpdated">Not loaded yet</span>
+      <button id="refreshBtn" type="button">Refresh</button>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="label">Households surveyed</div><div class="value" id="s-hh-n">–</div>
+        <div class="progress" id="s-hh-progress"></div>
+      </div>
+      <div class="stat">
+        <div class="label">Waste audit samples</div><div class="value" id="s-audit-n">–</div>
+        <div class="progress" id="s-audit-progress"></div>
+      </div>
+      <div class="stat"><div class="label">% segregating at source</div><div class="value" id="s-hh-seg">–</div></div>
+      <div class="stat"><div class="label">Interviews conducted</div><div class="value" id="s-int-n">–</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Town Waste Composition</h2>
+      <div class="chart-wrap"><canvas id="chartComposition"></canvas></div>
+      <p class="empty" id="compositionEmpty" style="display:none;">No audit samples logged yet.</p>
+    </div>
+
+    <div class="card">
+      <h2>Hostel Pilot — Per-Capita Disposal (kg/day)</h2>
+      <div class="chart-wrap"><canvas id="chartHostel"></canvas></div>
+      <p class="empty" id="hostelEmpty" style="display:none;">Log baseline and pilot entries to see this comparison.</p>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat"><div class="label">Reduction, baseline → pilot</div><div class="value" id="s-reduction">–</div></div>
+      <div class="stat"><div class="label">Avg. segregation compliance (pilot)</div><div class="value" id="s-compliance">–</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Why Households Don't Segregate</h2>
+      <div id="barrierBreakdown"></div>
+      <p class="empty" id="barrierEmpty" style="display:none;">No data yet — logged once households reporting "No" to segregation come in.</p>
+    </div>
+
+    <div class="card">
+      <h2>AI Classification Validation</h2>
+      <p class="hint" id="aiValidationText">Not enough tested samples yet — need at least one Waste Audit entry with both a manual result and an AI-assisted estimate.</p>
+    </div>
+
+    <div class="card sentence-card">
+      <h2>What the Numbers Say</h2>
+      <p id="sentence-baseline">–</p>
+      <p id="sentence-benchmark">–</p>
+      <p id="sentence-dumpsites">–</p>
+    </div>
+
+    <div class="card">
+      <h2>Short-Range Trend — Hostel Pilot</h2>
+      <p class="hint" style="margin-bottom:10px;">A straight-line projection based only on the pilot's own daily numbers — not a broader forecast.</p>
+      <div class="chart-wrap"><canvas id="chartTrend"></canvas></div>
+      <p class="empty" id="trendEmpty" style="display:none;">Need at least 3 pilot days logged to show a trend.</p>
+    </div>
+  </section>
+
+  <!-- HOUSEHOLD SURVEY -->
+  <section id="view-household" class="view">
+    <form id="form-household">
+      <div class="card">
+        <h2>Household Survey Entry</h2>
+        <div class="row2">
+          <div class="field"><label>Date</label><input type="date" name="date" required></div>
+          <div class="field"><label>Surveyor</label><input type="text" name="surveyor" required></div>
+        </div>
+        <div class="field"><label>Ward / Locality</label><input type="text" name="ward" required></div>
+        <div class="row2">
+          <div class="field"><label>Household size</label><input type="number" name="householdSize" min="1" required></div>
+          <div class="field"><label>Respondent occupation</label><input type="text" name="occupation"></div>
+        </div>
+        <div class="field"><label>Estimated daily waste (kg)</label><input type="number" step="0.1" name="estDailyWaste" required></div>
+        <div class="row2">
+          <div class="field"><label>Segregates at source?</label>
+            <select name="segregates" id="segregatesSelect"><option value="N">No</option><option value="Y">Yes</option></select>
+          </div>
+          <div class="field"><label>Willing to pay for collection?</label>
+            <select name="willingToPay"><option value="N">No</option><option value="Y">Yes</option></select>
+          </div>
+        </div>
+        <div class="field" id="segregationBarrierField">
+          <label>If not segregating, why?</label>
+          <select name="segregationBarrier">
+            <option value="No bins/space">No bins/space</option>
+            <option value="No time">No time</option>
+            <option value="Never taught how">Never taught how</option>
+            <option value="Don't see the point">Don't see the point</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="field"><label>Existing informal practices</label>
+          <input type="text" name="informalPractices" placeholder="e.g. feeds food scraps to livestock, reuses containers">
+        </div>
+        <div class="field"><label>Primary disposal method</label>
+          <select name="disposalMethod">
+            <option>Open dumping</option><option>Municipal collection</option><option>Burning</option>
+            <option>Home composting</option><option>Buried</option><option>Riverside dumping</option><option>Other</option>
+          </select>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Distance to nearest dump point (m)</label><input type="number" name="distanceToDump"></div>
+          <div class="field"><label>Awareness of waste issues (1–5)</label><input type="number" name="awareness" min="1" max="5"></div>
+        </div>
+        <div class="field"><label>Where did their awareness come from?</label>
+          <select name="awarenessSource">
+            <option>None</option><option>School</option><option>Word of mouth</option>
+            <option>Government notice</option><option>Social media</option><option>Other</option>
+          </select>
+        </div>
+        <div class="field"><label>Notes</label><textarea name="notes"></textarea></div>
+      </div>
+      <button class="submit" type="submit">Save household entry</button>
+      <div class="status" id="status-household"></div>
+    </form>
+  </section>
+
+  <!-- WASTE AUDIT -->
+  <section id="view-audit" class="view">
+    <form id="form-audit">
+      <div class="card">
+        <h2>Town Waste Audit Entry</h2>
+        <div class="row2">
+          <div class="field"><label>Date</label><input type="date" name="date" required></div>
+          <div class="field"><label>Recorded by</label><input type="text" name="recordedBy" required></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Ward / Location</label><input type="text" name="ward" required></div>
+          <div class="field"><label>Sample source</label>
+            <select name="source"><option>Household</option><option>Market</option><option>Institution (School/Hostel)</option><option>Street/Public Bin</option><option>Commercial</option></select>
+          </div>
+        </div>
+        <div class="field"><label>Total sample weight (kg)</label><input type="number" step="0.1" name="totalWeight" required></div>
+        <div class="row2">
+          <div class="field"><label>Organic / wet (kg)</label><input type="number" step="0.1" name="organic" required></div>
+          <div class="field"><label>Plastic (kg)</label><input type="number" step="0.1" name="plastic" required></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Paper / cardboard (kg)</label><input type="number" step="0.1" name="paper" required></div>
+          <div class="field"><label>Glass (kg)</label><input type="number" step="0.1" name="glass" required></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Metal (kg)</label><input type="number" step="0.1" name="metal" required></div>
+          <div class="field"><label>Other / non-recyclable (kg)</label><input type="number" step="0.1" name="other" required></div>
+        </div>
+        <div class="field"><label>Notes</label><textarea name="notes"></textarea></div>
+      </div>
+
+      <div class="card">
+        <h2>AI-Assisted Estimate (optional — for accuracy validation)</h2>
+        <p class="hint" style="margin-bottom:10px;">Photograph this same sample and run the tile-grid tool for a rough, independent estimate to compare against your hand-sorted weights above. Purely optional — skip if you're short on time.</p>
+        <input type="file" accept="image/*" capture="environment" id="auditPhotoInput">
+        <p class="hint" id="auditPhotoStatus" style="margin-top:8px;">No photo selected.</p>
+        <img id="auditPhotoPreview" style="display:none; max-width:100%; border-radius:10px; margin-top:10px; border:1px solid var(--line);">
+        <button class="submit" type="button" id="auditAnalyzeBtn" style="margin-top:12px; background:#8C6D3F;" disabled>Analyze this sample</button>
+        <p class="hint" id="auditAnalyzeStatus" style="margin-top:8px; display:none;"></p>
+        <div id="auditGridBreakdown" style="margin-top:12px;"></div>
+      </div>
+      <button class="submit" type="submit">Save audit entry</button>
+      <div class="status" id="status-audit"></div>
+    </form>
+  </section>
+
+  <!-- STAKEHOLDER INTERVIEW -->
+  <section id="view-interview" class="view">
+    <form id="form-interview">
+      <div class="card">
+        <h2>Stakeholder Interview Entry</h2>
+        <div class="row2">
+          <div class="field"><label>Date</label><input type="date" name="date" required></div>
+          <div class="field"><label>Interviewer</label><input type="text" name="interviewer" required></div>
+        </div>
+        <div class="field"><label>Name / designation</label><input type="text" name="nameDesignation" required></div>
+        <div class="field"><label>Organization</label><input type="text" name="organization"></div>
+        <div class="field"><label>Key topic</label><input type="text" name="topic" required></div>
+        <div class="field"><label>Summary of response</label><textarea name="summary" required></textarea></div>
+        <div class="field"><label>Follow-up needed?</label><input type="text" name="followUp" placeholder="e.g. Y – ask about budget"></div>
+      </div>
+      <button class="submit" type="submit">Save interview entry</button>
+      <div class="status" id="status-interview"></div>
+    </form>
+  </section>
+
+  <!-- HOSTEL LOG -->
+  <section id="view-hostel" class="view">
+    <form id="form-hostel">
+      <div class="card">
+        <h2>Hostel Daily Log</h2>
+        <div class="row2">
+          <div class="field"><label>Date</label><input type="date" name="date" required></div>
+          <div class="field"><label>Recorded by</label><input type="text" name="recordedBy" required></div>
+        </div>
+        <div class="field"><label>Phase</label>
+          <select name="phase" id="hostelPhase"><option>Baseline</option><option>Pilot</option></select>
+        </div>
+        <div class="field" id="complianceField">
+          <label>Segregation compliance (% of residents, pilot only)</label>
+          <div class="slider-row">
+            <input type="range" name="segregationCompliance" id="complianceSlider" min="0" max="100" value="70">
+            <span class="slider-val" id="complianceVal">70%</span>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Wet / organic waste (kg)</label><input type="number" step="0.1" name="wetOrganic" required></div>
+          <div class="field"><label>Dry / recyclable waste (kg)</label><input type="number" step="0.1" name="dryRecyclable" required></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Waste sent to disposal (kg)</label><input type="number" step="0.1" name="disposal" required></div>
+          <div class="field"><label>Number of residents</label><input type="number" name="residents" value="110" required></div>
+        </div>
+        <div class="field"><label>Issues observed</label><textarea name="issues"></textarea></div>
+        <div class="field"><label>Notes</label><textarea name="notes"></textarea></div>
+      </div>
+      <button class="submit" type="submit">Save hostel entry</button>
+      <div class="status" id="status-hostel"></div>
+    </form>
+  </section>
+
+  <!-- HOUSEHOLD DAILY LOG -->
+  <section id="view-householddaily" class="view">
+    <form id="form-householddaily">
+      <div class="card">
+        <h2>Household Daily Log</h2>
+        <p class="hint" style="margin-bottom:12px;">For a small number of volunteer households tracked daily (e.g. team members' own families) — separate from the one-time Household Survey.</p>
+        <div class="field">
+          <label>Household ID</label>
+          <input type="text" name="householdId" id="householdIdInput" placeholder="e.g. Parent-1" list="knownHouseholdIds" required>
+          <datalist id="knownHouseholdIds"></datalist>
+          <p class="hint">Use the same ID every day for the same household so entries link into a timeline.</p>
+        </div>
+        <div class="field"><label>Date</label><input type="date" name="date" required></div>
+        <div class="row2">
+          <div class="field"><label>Wet / organic waste (kg)</label><input type="number" step="0.1" name="wetOrganic" required></div>
+          <div class="field"><label>Dry / recyclable waste (kg)</label><input type="number" step="0.1" name="dryRecyclable" required></div>
+        </div>
+        <div class="field"><label>Disposal method today</label>
+          <select name="disposalMethod">
+            <option>Home composting</option><option>Open dumping</option><option>Municipal collection</option>
+            <option>Burning</option><option>Buried</option><option>Riverside dumping</option><option>Other</option>
+          </select>
+        </div>
+        <div class="field"><label>Notes</label><textarea name="notes"></textarea></div>
+      </div>
+      <button class="submit" type="submit">Save daily entry</button>
+      <div class="status" id="status-householddaily"></div>
+    </form>
+  </section>
+
+  <!-- REPORT DUMP SITE -->
+  <section id="view-dumpreport" class="view">
+    <form id="form-dumping">
+      <div class="card">
+        <h2>Report / Update a Dump Site</h2>
+        <div class="row2">
+          <div class="field"><label>Date</label><input type="date" name="date" required></div>
+          <div class="field"><label>Recorded by</label><input type="text" name="recordedBy" required></div>
+        </div>
+        <div class="field">
+          <label>Site ID</label>
+          <input type="text" name="siteId" id="siteIdInput" placeholder="Leave blank for a new site, or type e.g. DS-001 to update a known one" list="knownSiteIds">
+          <datalist id="knownSiteIds"></datalist>
+          <p class="hint">Revisiting a spot you've already logged? Reuse its Site ID so the map can show how it changed over time.</p>
+        </div>
+        <div class="field" id="revisitCompareField" style="display:none;">
+          <label>Comparing to last visit</label>
+          <div class="row2">
+            <div>
+              <p class="hint" style="margin-bottom:6px;">Last visit (<span id="lastVisitDate"></span>)</p>
+              <img id="lastVisitPhoto" style="width:100%; border-radius:10px; border:1px solid var(--line);">
+            </div>
+            <div>
+              <p class="hint" style="margin-bottom:6px;">New photo</p>
+              <img id="newPhotoPreviewSmall" style="width:100%; border-radius:10px; border:1px solid var(--line); display:none;">
+              <p class="empty" id="newPhotoPending" style="margin:0;">Upload a photo below to compare.</p>
+            </div>
+          </div>
+          <div id="similarityHint" style="display:none; margin-top:10px; padding:10px 12px; border-radius:10px; background:#FDF3D0; color:#8C6D3F; font-size:13px; font-weight:700;"></div>
+          <p class="hint" style="margin-top:8px;">This is a rough visual hint only — you still choose the actual Status below.</p>
+        </div>
+        <div class="field">
+          <label>Location</label>
+          <button type="button" class="submit" id="gpsBtn" style="background:#8C6D3F;">Capture GPS location</button>
+          <p class="hint" id="gpsStatus">Not captured yet.</p>
+          <div class="row2" style="margin-top:8px;">
+            <div class="field"><label>Latitude</label><input type="number" step="0.000001" name="lat" id="latInput" readonly></div>
+            <div class="field"><label>Longitude</label><input type="number" step="0.000001" name="lng" id="lngInput" readonly></div>
+          </div>
+        </div>
+        <div class="field"><label>Status</label>
+          <select name="status">
+            <option value="New">New site</option>
+            <option value="Increased">Increased since last visit</option>
+            <option value="Reduced">Reduced since last visit</option>
+            <option value="Cleared">Cleared</option>
+          </select>
+        </div>
+        <div class="field"><label>Photo</label>
+          <input type="file" accept="image/*" capture="environment" id="dumpPhotoInput">
+          <p class="hint" id="photoStatus">No photo selected.</p>
+          <img id="photoPreview" style="display:none; max-width:100%; border-radius:10px; margin-top:8px; border:1px solid var(--line);">
+        </div>
+        <div class="field"><label>Description</label><textarea name="description" placeholder="What's there, roughly how much, near what landmark"></textarea></div>
+        <div class="field"><label>Notes</label><textarea name="notes"></textarea></div>
+      </div>
+      <button class="submit" type="submit">Save dump site entry</button>
+      <div class="status" id="status-dumping"></div>
+    </form>
+  </section>
+
+  <!-- DUMP SITES MAP -->
+  <section id="view-dumpmap" class="view">
+    <div class="card">
+      <h2>Illegal Dumping Sites — Live Map</h2>
+      <p class="hint" style="margin-bottom:10px;">Pins show each site's most recent status. Tap a pin for its photo and full history.</p>
+      <div id="dumpMapContainer" style="height:420px; border-radius:12px; overflow:hidden; border:1px solid var(--line);"></div>
+      <div style="display:flex; gap:14px; margin-top:10px; flex-wrap:wrap; font-size:12px; color:var(--ink-soft);">
+        <span>● New/Active</span>
+        <span>● Increased</span>
+        <span>● Reduced</span>
+        <span>● Cleared</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>All Sites</h2>
+      <p class="hint" style="margin-bottom:10px;">Tap a row to jump the map to that site.</p>
+      <div id="dumpSiteList"></div>
+      <p class="empty" id="dumpSiteListEmpty" style="display:none;">No dump sites logged yet.</p>
+    </div>
+    <div class="card" id="siteHistoryCard" style="display:none;">
+      <h2>Site History — <span id="historySiteId"></span></h2>
+      <div id="siteHistoryList"></div>
+    </div>
+    <div class="card">
+      <h2>Plan a Revisit Route</h2>
+      <p class="hint" style="margin-bottom:10px;">Round trip from VPS, visiting every site not yet marked Cleared. Stop order is a nearest-neighbor estimate, not a guaranteed-shortest solution — the drawn path itself follows real roads.</p>
+      <button class="submit" type="button" id="planRouteBtn" style="background:#8C6D3F;">Plan Route</button>
+      <p class="hint" id="routeStatus" style="margin-top:10px; display:none;"></p>
+      <div id="routeSummaryCard" style="display:none; margin-top:12px; padding:14px; border-radius:10px; background:var(--paper); border:1px solid var(--line);">
+        <p style="font-weight:700; margin:0 0 6px;" id="routeStopsLine"></p>
+        <p style="margin:0; font-size:13px; color:var(--ink-soft);" id="routeDistanceLine"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- IDENTIFY WASTE (Citizen + Municipal) -->
+  <section id="view-identifywaste" class="view">
+    <div class="card">
+      <h2>Identify a Waste Item</h2>
+      <p class="hint" style="margin-bottom:12px;">Take a photo of a single item for a category suggestion and disposal tips. For a genuinely mixed pile, the estimate below is approximate — see the note under the result.</p>
+      <input type="file" accept="image/*" capture="environment" id="identifyPhotoInput">
+      <p class="hint" id="identifyStatus" style="margin-top:8px;">No photo selected.</p>
+      <img id="identifyPreview" style="display:none; max-width:100%; border-radius:10px; margin-top:10px; border:1px solid var(--line);">
+      <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size:14px; cursor:pointer;">
+        <input type="checkbox" id="mixedPileCheckbox"> This is a mixed pile, not a single item
+      </label>
+      <button class="submit" type="button" id="identifyBtn" style="margin-top:14px;" disabled>Identify</button>
+      <p class="hint" id="identifyLoadStatus" style="margin-top:8px; display:none;"></p>
+    </div>
+
+    <div class="card" id="identifyResultCard" style="display:none;">
+      <h2>Result</h2>
+      <div id="identifySingleResult" style="display:none;">
+        <p style="font-size:16px; font-weight:700; color:var(--soil-dark);" id="identifyCategoryLabel"></p>
+        <p class="hint" id="identifyConfidence"></p>
+        <div style="margin-top:14px; padding:14px; border-radius:10px; background:var(--paper); border:1px solid var(--line);">
+          <p style="font-size:13px; font-weight:700; margin:0 0 6px; color:var(--soil);">Decomposition & disposal</p>
+          <p style="font-size:14px; margin:0;" id="identifyDecompInfo"></p>
+        </div>
+      </div>
+      <div id="identifyGridResult" style="display:none;">
+        <div id="identifyGridCanvasWrap" style="margin-bottom:12px;"></div>
+        <div id="identifyGridBreakdown"></div>
+        <div style="margin-top:10px; padding:10px 12px; border-radius:10px; background:#FDF3D0; color:#8C6D3F; font-size:13px; font-weight:700;">
+          Approximate estimate only — based on the fraction of image tiles in each category, not exact weight or volume.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ACTIVITY LOG -->
+  <section id="view-activitylog" class="view">
+    <div class="refresh-row">
+      <span class="sub" id="activityUpdated">Not loaded yet</span>
+      <button id="activityRefreshBtn" type="button">Refresh</button>
+    </div>
+    <div class="card">
+      <h2>Who Did What</h2>
+      <p class="hint" style="margin-bottom:10px;">Every submission across all forms, newest first — pulled from each entry's own name field, not a separate login.</p>
+      <div id="activitySummary" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;"></div>
+      <div id="activityList"></div>
+      <p class="empty" id="activityEmpty" style="display:none;">No activity logged yet.</p>
+    </div>
+  </section>
+
+</div>
+</div>
+
+<script>
+  // Paste your Apps Script Web App deployment URL here (ends in /exec)
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzGR-VTlSX894cpCdBxnn5UH2joJBmE-uefDGUvvurHj_XKBrPz27SxGG25xRhKT_Kd/exec";
+  // Google Maps JavaScript API key
+  const GOOGLE_MAPS_API_KEY = "AIzaSyCNQpMzAw6znLrpz8mVjxaVXCLrUGppgMw";
+  // Default map center — approximate Daporijo town center; adjust if needed
+  const DEFAULT_MAP_CENTER = { lat: 27.983, lng: 94.233 };
+
+  // ---------- Splash screen ----------
+  // The Municipal role passcode is checked server-side against the
+  // Login tab in the Google Sheet (action=checkPasscode) — nothing
+  // secret is stored in this file. Still a lightweight, prototype-grade
+  // check (no real session/auth system), appropriate for a school demo.
+  const CITIZEN_VIEWS = ['dumpreport', 'dumpmap', 'identifywaste'];
+  let currentRole = null;
+
+  const splashScreen = document.getElementById('splashScreen');
+  const loginScreen = document.getElementById('loginScreen');
+  const appShell = document.getElementById('appShell');
+
+  function dismissSplash() {
+    splashScreen.style.display = 'none';
+    loginScreen.style.display = 'flex';
+  }
+  const splashTimer = setTimeout(dismissSplash, 4600);
+  splashScreen.addEventListener('click', () => { clearTimeout(splashTimer); dismissSplash(); });
+
+  // ---------- Login / role selection ----------
+  document.getElementById('citizenLoginBtn').addEventListener('click', () => enterApp('citizen'));
+  document.getElementById('municipalLoginBtnShow').addEventListener('click', () => {
+    document.getElementById('municipalPasscodeRow').style.display = 'block';
+    document.getElementById('municipalPasscodeInput').focus();
+  });
+  document.getElementById('municipalLoginSubmit').addEventListener('click', submitMunicipalLogin);
+  document.getElementById('municipalPasscodeInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitMunicipalLogin();
+  });
+  function submitMunicipalLogin() {
+    const val = document.getElementById('municipalPasscodeInput').value;
+    const err = document.getElementById('loginError');
+    const btn = document.getElementById('municipalLoginSubmit');
+    if (WEB_APP_URL.includes('PASTE_YOUR')) {
+      err.textContent = 'Setup needed: paste the Apps Script deployment URL into index.html first.';
+      err.style.display = 'block';
+      return;
+    }
+    if (!val) {
+      err.textContent = 'Enter a passcode.';
+      err.style.display = 'block';
+      return;
+    }
+    err.style.display = 'none';
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Checking...';
+    jsonp(WEB_APP_URL + '?action=checkPasscode&passcode=' + encodeURIComponent(val))
+      .then(data => {
+        if (data.valid) {
+          enterApp('municipal');
+        } else {
+          err.textContent = 'Incorrect passcode — check with your project guide.';
+          err.style.display = 'block';
+        }
+      })
+      .catch(() => {
+        err.textContent = 'Could not verify — check your connection and try again.';
+        err.style.display = 'block';
+      })
+      .finally(() => {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      });
+  }
+  document.getElementById('switchRoleBtn').addEventListener('click', () => {
+    appShell.style.display = 'none';
+    document.getElementById('municipalPasscodeInput').value = '';
+    document.getElementById('municipalPasscodeRow').style.display = 'none';
+    document.getElementById('loginError').style.display = 'none';
+    loginScreen.style.display = 'flex';
+  });
+
+  function enterApp(role) {
+    currentRole = role;
+    loginScreen.style.display = 'none';
+    appShell.style.display = 'block';
+    const badge = document.getElementById('roleBadge');
+    badge.textContent = role === 'municipal' ? 'Municipal / Team' : 'Citizen';
+    applyRoleVisibility(role);
+  }
+
+  function applyRoleVisibility(role) {
+    navButtons.forEach(btn => {
+      const allowed = role === 'municipal' || CITIZEN_VIEWS.includes(btn.dataset.view);
+      btn.style.display = allowed ? '' : 'none';
+    });
+    const defaultView = role === 'municipal' ? 'dashboard' : 'dumpreport';
+    navButtons.forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    const defaultBtn = document.querySelector('#nav button[data-view="' + defaultView + '"]');
+    if (defaultBtn) defaultBtn.classList.add('active');
+    document.getElementById('view-' + defaultView).classList.add('active');
+    if (defaultView === 'dashboard') loadDashboard();
+  }
+
+  // ---------- Tab navigation ----------
+  const navButtons = document.querySelectorAll('#nav button');
+  navButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      navButtons.forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('view-' + btn.dataset.view).classList.add('active');
+      if (btn.dataset.view === 'dashboard') loadDashboard();
+      if (btn.dataset.view === 'dumpreport') loadKnownSiteIds();
+      if (btn.dataset.view === 'householddaily') loadKnownHouseholdIds();
+      if (btn.dataset.view === 'dumpmap') loadDumpMap();
+      if (btn.dataset.view === 'activitylog') loadActivityLog();
+    });
+  });
+
+  // default all date fields to today
+  document.querySelectorAll('input[type=date]').forEach(el => el.value = new Date().toISOString().slice(0,10));
+
+  // ---------- Hostel compliance slider + baseline/pilot toggle ----------
+  const complianceSlider = document.getElementById('complianceSlider');
+  const complianceVal = document.getElementById('complianceVal');
+  complianceSlider.addEventListener('input', () => complianceVal.textContent = complianceSlider.value + '%');
+  const complianceField = document.getElementById('complianceField');
+  document.getElementById('hostelPhase').addEventListener('change', (e) => {
+    complianceField.style.display = e.target.value === 'Pilot' ? 'block' : 'none';
+  });
+  complianceField.style.display = 'none'; // default phase is Baseline
+
+  // ---------- Household Survey: barrier field toggle ----------
+  const segregatesSelect = document.getElementById('segregatesSelect');
+  const segregationBarrierField = document.getElementById('segregationBarrierField');
+  segregatesSelect.addEventListener('change', (e) => {
+    segregationBarrierField.style.display = e.target.value === 'N' ? 'block' : 'none';
+  });
+  segregationBarrierField.style.display = 'block'; // default select value is N
+
+  // ---------- Generic form submit handler ----------
+  function wireForm(formId, type, statusId, extra) {
+    const form = document.getElementById(formId);
+    const status = document.getElementById(statusId);
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (WEB_APP_URL.includes('PASTE_YOUR')) {
+        status.className = 'status err';
+        status.textContent = 'Setup needed: paste the Apps Script deployment URL into index.html.';
+        return;
+      }
+      const btn = form.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      const originalText = btn.textContent;
+      btn.textContent = 'Saving...';
+
+      const fd = new FormData(form);
+      const payload = { type };
+      fd.forEach((v, k) => payload[k] = v);
+      if (extra) Object.assign(payload, extra(fd));
+
+      try {
+        await fetch(WEB_APP_URL, {
+          method: 'POST', mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload),
+        });
+        status.className = 'status ok';
+        status.textContent = 'Saved.';
+        form.reset();
+        document.querySelectorAll('input[type=date]').forEach(el => el.value = new Date().toISOString().slice(0,10));
+        if (type === 'hostel') { complianceSlider.value = 70; complianceVal.textContent = '70%'; complianceField.style.display = 'none'; document.querySelector('[name=residents]').value = 110; }
+      } catch (err) {
+        status.className = 'status err';
+        status.textContent = 'Could not save — check your connection and try again.';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    });
+  }
+  wireForm('form-household', 'household', 'status-household');
+  wireForm('form-audit', 'audit', 'status-audit', () => ({
+    aiEstOrganic: auditAiEstimate.organic, aiEstRecyclable: auditAiEstimate.recyclable, aiEstOther: auditAiEstimate.other,
+  }));
+  document.getElementById('form-audit').addEventListener('submit', () => {
+    setTimeout(() => {
+      const statusEl = document.getElementById('status-audit');
+      if (statusEl.classList.contains('ok')) {
+        auditAiEstimate = { organic: '', recyclable: '', other: '' };
+        auditPhotoImg = null;
+        document.getElementById('auditPhotoPreview').style.display = 'none';
+        document.getElementById('auditPhotoStatus').textContent = 'No photo selected.';
+        document.getElementById('auditGridBreakdown').innerHTML = '';
+        document.getElementById('auditAnalyzeBtn').disabled = true;
+      }
+    }, 50);
+  });
+  wireForm('form-interview', 'interview', 'status-interview');
+  wireForm('form-hostel', 'hostel', 'status-hostel');
+  wireForm('form-householddaily', 'householdDaily', 'status-householddaily');
+
+  // ---------- Waste Audit: optional AI-assisted estimate ----------
+  let auditAiEstimate = { organic: '', recyclable: '', other: '' };
+  let auditPhotoImg = null;
+  const auditPhotoInput = document.getElementById('auditPhotoInput');
+  const auditPhotoStatus = document.getElementById('auditPhotoStatus');
+  const auditPhotoPreview = document.getElementById('auditPhotoPreview');
+  const auditAnalyzeBtn = document.getElementById('auditAnalyzeBtn');
+
+  auditPhotoInput.addEventListener('change', () => {
+    const file = auditPhotoInput.files[0];
+    if (!file) { auditPhotoStatus.textContent = 'No photo selected.'; auditAnalyzeBtn.disabled = true; return; }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        auditPhotoImg = img;
+        auditPhotoPreview.src = e.target.result;
+        auditPhotoPreview.style.display = 'block';
+        auditPhotoStatus.textContent = 'Photo ready.';
+        auditAnalyzeBtn.disabled = false;
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  auditAnalyzeBtn.addEventListener('click', async () => {
+    if (!auditPhotoImg) return;
+    auditAnalyzeBtn.disabled = true;
+    const originalText = auditAnalyzeBtn.textContent;
+    auditAnalyzeBtn.textContent = 'Analyzing...';
+    try {
+      const { counts, total } = await classifyTileGrid(auditPhotoImg, 4, 3, document.getElementById('auditAnalyzeStatus'));
+      renderGridBreakdown(counts, total, 'auditGridBreakdown');
+      const organicFrac = (counts.Organic || 0) / total;
+      const recyclableFrac = ((counts.Plastic || 0) + (counts.Paper || 0) + (counts.Glass || 0) + (counts.Metal || 0)) / total;
+      const otherFrac = Math.max(0, 1 - organicFrac - recyclableFrac);
+      auditAiEstimate = { organic: organicFrac, recyclable: recyclableFrac, other: otherFrac };
+    } catch (err) {
+      document.getElementById('auditAnalyzeStatus').style.display = 'block';
+      document.getElementById('auditAnalyzeStatus').textContent = 'Could not analyze — check your connection and try again.';
+    } finally {
+      auditAnalyzeBtn.disabled = false;
+      auditAnalyzeBtn.textContent = originalText;
+    }
+  });
+
+  // ---------- Dump Site: GPS capture ----------
+  const gpsBtn = document.getElementById('gpsBtn');
+  const gpsStatus = document.getElementById('gpsStatus');
+  const latInput = document.getElementById('latInput');
+  const lngInput = document.getElementById('lngInput');
+  gpsBtn.addEventListener('click', () => {
+    if (!navigator.geolocation) {
+      gpsStatus.textContent = 'GPS not supported on this device/browser.';
+      return;
+    }
+    gpsStatus.textContent = 'Locating...';
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        latInput.value = pos.coords.latitude.toFixed(6);
+        lngInput.value = pos.coords.longitude.toFixed(6);
+        gpsStatus.textContent = 'Captured (accuracy ~' + Math.round(pos.coords.accuracy) + 'm).';
+      },
+      (err) => { gpsStatus.textContent = 'Could not get location — check location permission and try again.'; },
+      { enableHighAccuracy: true, timeout: 12000 }
+    );
+  });
+
+  // ---------- Dump Site: photo capture + client-side compression ----------
+  let currentPhotoBase64 = '';
+  const dumpPhotoInput = document.getElementById('dumpPhotoInput');
+  const photoStatus = document.getElementById('photoStatus');
+  const photoPreview = document.getElementById('photoPreview');
+  dumpPhotoInput.addEventListener('change', () => {
+    const file = dumpPhotoInput.files[0];
+    if (!file) { currentPhotoBase64 = ''; photoStatus.textContent = 'No photo selected.'; photoPreview.style.display = 'none'; return; }
+    photoStatus.textContent = 'Processing photo...';
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 1000;
+        const scale = Math.min(1, maxW / img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        currentPhotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
+        photoPreview.src = currentPhotoBase64;
+        photoPreview.style.display = 'block';
+        photoStatus.textContent = 'Photo ready (' + Math.round(currentPhotoBase64.length / 1024) + ' KB).';
+        updateRevisitComparison();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // ---------- Dump Site: revisit photo comparison ----------
+  let knownSitesLatest = {}; // siteId -> { PhotoURL, Date }
+  const revisitCompareField = document.getElementById('revisitCompareField');
+  const lastVisitPhoto = document.getElementById('lastVisitPhoto');
+  const lastVisitDateEl = document.getElementById('lastVisitDate');
+  const newPhotoPreviewSmall = document.getElementById('newPhotoPreviewSmall');
+  const newPhotoPending = document.getElementById('newPhotoPending');
+  const similarityHint = document.getElementById('similarityHint');
+
+  document.getElementById('siteIdInput').addEventListener('input', (e) => {
+    const match = knownSitesLatest[e.target.value.trim()];
+    if (match) {
+      revisitCompareField.style.display = 'block';
+      lastVisitPhoto.src = match.PhotoURL || '';
+      lastVisitDateEl.textContent = match.Date || 'unknown date';
+      updateRevisitComparison();
+    } else {
+      revisitCompareField.style.display = 'none';
+      similarityHint.style.display = 'none';
+    }
+  });
+
+  function updateRevisitComparison() {
+    if (revisitCompareField.style.display === 'none') return;
+    if (currentPhotoBase64) {
+      newPhotoPreviewSmall.src = currentPhotoBase64;
+      newPhotoPreviewSmall.style.display = 'block';
+      newPhotoPending.style.display = 'none';
+      computeSimilarity();
+    } else {
+      newPhotoPreviewSmall.style.display = 'none';
+      newPhotoPending.style.display = 'block';
+      similarityHint.style.display = 'none';
+    }
+  }
+
+  // Lightweight perceptual similarity (difference hash) — a simple visual
+  // comparison, not a trained AI model. Shown only as a hint; the recorder
+  // always makes the actual call. Gracefully skipped if the old photo can't
+  // be read into a canvas (cross-origin restrictions on some image hosts).
+  function imageToDHash(imgEl) {
+    const size = 9;
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size - 1;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(imgEl, 0, 0, size, size - 1);
+    const data = ctx.getImageData(0, 0, size, size - 1).data; // may throw if tainted
+    const gray = [];
+    for (let i = 0; i < data.length; i += 4) {
+      gray.push(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+    }
+    let hash = '';
+    for (let row = 0; row < size - 1; row++) {
+      for (let col = 0; col < size - 1; col++) {
+        const left = gray[row * size + col];
+        const right = gray[row * size + col + 1];
+        hash += left > right ? '1' : '0';
+      }
+    }
+    return hash;
+  }
+  function hammingSimilarity(a, b) {
+    if (a.length !== b.length) return null;
+    let diff = 0;
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) diff++;
+    return 1 - diff / a.length;
+  }
+  function computeSimilarity() {
+    similarityHint.style.display = 'none';
+    if (!lastVisitPhoto.src || !newPhotoPreviewSmall.src) return;
+    try {
+      const oldImg = new Image();
+      oldImg.crossOrigin = 'anonymous';
+      oldImg.onload = () => {
+        try {
+          const newImg = new Image();
+          newImg.onload = () => {
+            try {
+              const hashOld = imageToDHash(oldImg);
+              const hashNew = imageToDHash(newImg);
+              const sim = hammingSimilarity(hashOld, hashNew);
+              if (sim !== null) {
+                similarityHint.textContent = `Rough visual similarity to last visit: ${Math.round(sim * 100)}%`;
+                similarityHint.style.display = 'block';
+              }
+            } catch (err) { /* can't read pixels (cross-origin) — skip silently */ }
+          };
+          newImg.src = newPhotoPreviewSmall.src;
+        } catch (err) { /* skip silently */ }
+      };
+      oldImg.onerror = () => { /* old photo couldn't load for comparison — skip silently */ };
+      oldImg.src = lastVisitPhoto.src;
+    } catch (err) { /* skip silently */ }
+  }
+
+
+  wireForm('form-dumping', 'dumping', 'status-dumping', () => ({ photoBase64: currentPhotoBase64 }));
+  // extra reset specific to the dumping form after a successful save
+  document.getElementById('form-dumping').addEventListener('submit', () => {
+    setTimeout(() => {
+      const statusEl = document.getElementById('status-dumping');
+      if (statusEl.classList.contains('ok')) {
+        currentPhotoBase64 = '';
+        photoPreview.style.display = 'none';
+        photoStatus.textContent = 'No photo selected.';
+        gpsStatus.textContent = 'Not captured yet.';
+        revisitCompareField.style.display = 'none';
+        similarityHint.style.display = 'none';
+      }
+    }, 50);
+  });
+
+  // ---------- Dump Site: known Site IDs for the datalist ----------
+  let siteIdsLoaded = false;
+  async function loadKnownSiteIds() {
+    if (siteIdsLoaded || WEB_APP_URL.includes('PASTE_YOUR')) return;
+    try {
+      const data = await jsonp(WEB_APP_URL + '?action=dumpingSites');
+      const sitesList = data.sites || [];
+      const ids = [...new Set(sitesList.map(s => s.SiteID).filter(Boolean))];
+      const datalist = document.getElementById('knownSiteIds');
+      datalist.innerHTML = ids.map(id => `<option value="${id}">`).join('');
+      // cache each site's most recent entry for the revisit photo comparison
+      const bySiteTmp = {};
+      sitesList.forEach(s => { (bySiteTmp[s.SiteID] = bySiteTmp[s.SiteID] || []).push(s); });
+      knownSitesLatest = {};
+      Object.keys(bySiteTmp).forEach(id => {
+        const hist = bySiteTmp[id].slice().sort((a, b) => new Date(a.Date) - new Date(b.Date));
+        knownSitesLatest[id] = hist[hist.length - 1];
+      });
+      siteIdsLoaded = true;
+    } catch (err) { /* non-critical, ignore */ }
+  }
+
+  // ---------- Household Daily Log: known Household IDs for the datalist ----------
+  let householdIdsLoaded = false;
+  async function loadKnownHouseholdIds() {
+    if (householdIdsLoaded || WEB_APP_URL.includes('PASTE_YOUR')) return;
+    try {
+      const data = await jsonp(WEB_APP_URL + '?action=householdIds');
+      const datalist = document.getElementById('knownHouseholdIds');
+      datalist.innerHTML = (data.ids || []).map(id => `<option value="${id}">`).join('');
+      householdIdsLoaded = true;
+    } catch (err) { /* non-critical, ignore */ }
+  }
+
+  // ---------- Dump Sites Map (Google Maps) ----------
+  let dumpMapLoaded = false, dumpMap, dumpInfoWindow, siteMarkers = {};
+  const STATUS_COLORS = { New: '#E08E2B', Increased: '#C0392B', Reduced: '#D4AC0D', Cleared: '#27AE60' };
+
+  function loadDumpMap() {
+    if (GOOGLE_MAPS_API_KEY.includes('PASTE_YOUR')) {
+      document.getElementById('dumpMapContainer').innerHTML =
+        '<div style="padding:20px; font-size:13px; color:#8A2A2A;">Setup needed: paste your Google Maps API key into index.html.</div>';
+      return;
+    }
+    if (dumpMapLoaded) { refreshDumpMapData(); return; }
+    dumpMapLoaded = true;
+    window.initDumpMap = () => {
+      dumpMap = new google.maps.Map(document.getElementById('dumpMapContainer'), {
+        center: DEFAULT_MAP_CENTER, zoom: 14,
+      });
+      dumpInfoWindow = new google.maps.InfoWindow();
+      refreshDumpMapData();
+    };
+    const script = document.createElement('script');
+    script.src = 'https://maps.googleapis.com/maps/api/js?key=' + GOOGLE_MAPS_API_KEY + '&callback=initDumpMap';
+    script.async = true;
+    document.body.appendChild(script);
+  }
+
+  async function refreshDumpMapData() {
+    if (WEB_APP_URL.includes('PASTE_YOUR')) return;
+    try {
+      const data = await jsonp(WEB_APP_URL + '?action=dumpingSites');
+      const sites = data.sites || [];
+      // group all observations by SiteID
+      const bySite = {};
+      sites.forEach(s => { (bySite[s.SiteID] = bySite[s.SiteID] || []).push(s); });
+      siteMarkers = {}; // reset for this refresh
+
+      const STATUS_LETTERS = { New: 'N', Increased: 'I', Reduced: 'R', Cleared: 'C' };
+
+      Object.keys(bySite).forEach(siteId => {
+        const history = bySite[siteId].slice().sort((a, b) => new Date(a.Date) - new Date(b.Date));
+        const latest = history[history.length - 1];
+        const color = STATUS_COLORS[latest.Status] || '#666666';
+        const marker = new google.maps.Marker({
+          position: { lat: Number(latest.Latitude), lng: Number(latest.Longitude) },
+          map: dumpMap,
+          title: siteId + ' — ' + latest.Status,
+          label: { text: STATUS_LETTERS[latest.Status] || '?', color: '#FFFFFF', fontWeight: 'bold', fontSize: '12px' },
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 11,
+            fillColor: color, fillOpacity: 1,
+            strokeColor: '#FFFFFF', strokeWeight: 2,
+          },
+        });
+        const openThisSite = () => {
+          const photoHtml = latest.PhotoURL ? `<img src="${latest.PhotoURL}" style="width:180px;border-radius:8px;display:block;margin-bottom:6px;">` : '';
+          dumpInfoWindow.setContent(
+            `<div style="font-family:sans-serif;max-width:200px;">${photoHtml}
+             <strong>${siteId}</strong> — ${latest.Status}<br>
+             <span style="font-size:12px;color:#666;">${latest.Date}</span><br>
+             <span style="font-size:12px;">${latest.Description || ''}</span></div>`
+          );
+          dumpInfoWindow.open(dumpMap, marker);
+          showSiteHistory(siteId, history);
+        };
+        marker.addListener('click', openThisSite);
+        siteMarkers[siteId] = { marker, latest, history, openThisSite };
+      });
+
+      renderDumpSiteList();
+
+      if (Object.keys(bySite).length === 0) {
+        document.getElementById('dumpMapContainer').insertAdjacentHTML('beforeend',
+          '<p style="padding:10px;font-size:13px;color:#666;">No dump sites logged yet.</p>');
+      }
+    } catch (err) { /* map stays usable even if data fetch fails */ }
+  }
+
+  function renderDumpSiteList() {
+    const listDiv = document.getElementById('dumpSiteList');
+    const emptyP = document.getElementById('dumpSiteListEmpty');
+    const ids = Object.keys(siteMarkers);
+    if (ids.length === 0) {
+      emptyP.style.display = 'block';
+      listDiv.innerHTML = '';
+      return;
+    }
+    emptyP.style.display = 'none';
+    // newest-checked first
+    ids.sort((a, b) => new Date(siteMarkers[b].latest.Date) - new Date(siteMarkers[a].latest.Date));
+    listDiv.innerHTML = ids.map(siteId => {
+      const { latest } = siteMarkers[siteId];
+      const color = STATUS_COLORS[latest.Status] || '#666666';
+      const thumb = latest.PhotoURL ? `<img class="site-row-thumb" src="${latest.PhotoURL}">` : `<div class="site-row-thumb"></div>`;
+      return `<div class="site-row" data-site-id="${siteId}">
+        ${thumb}
+        <div class="site-row-info">
+          <div class="site-row-title">${siteId}</div>
+          <div class="site-row-date">${latest.Date}</div>
+        </div>
+        <div class="site-row-badge" style="background:${color};">${latest.Status}</div>
+      </div>`;
+    }).join('');
+    listDiv.querySelectorAll('.site-row').forEach(row => {
+      row.addEventListener('click', () => {
+        const id = row.dataset.siteId;
+        const entry = siteMarkers[id];
+        if (!entry) return;
+        dumpMap.panTo(entry.marker.getPosition());
+        dumpMap.setZoom(16);
+        entry.openThisSite();
+      });
+    });
+  }
+
+  // ---------- Plan a Revisit Route (OpenRouteService — free, no billing account) ----------
+  // Uses the same live Google Map already loaded above; only the route line
+  // itself comes from OpenRouteService's free routing, not Google's Directions API.
+  const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjJhMzI5ZDE3YzI4NTQ1YjQ5NTY4NDI4YjZmNzg5ZjZhIiwiaCI6Im11cm11cjY0In0=";
+  const VPS_COORDS = { lat: 27.983, lng: 94.233 }; // adjust to VPS's exact coordinates if known
+  let routePolyline = null;
+
+  function haversineKm(a, b) {
+    const R = 6371;
+    const dLat = (b.lat - a.lat) * Math.PI / 180;
+    const dLng = (b.lng - a.lng) * Math.PI / 180;
+    const s = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(s));
+  }
+  // Nearest-neighbor stop ordering — a fast, reasonable heuristic, not a
+  // guaranteed-shortest solution. Good enough for a handful of daily stops.
+  function nearestNeighborOrder(start, points) {
+    const remaining = points.slice();
+    const order = [];
+    let current = start;
+    while (remaining.length) {
+      let bestIdx = 0, bestDist = Infinity;
+      remaining.forEach((p, i) => {
+        const d = haversineKm(current, p);
+        if (d < bestDist) { bestDist = d; bestIdx = i; }
+      });
+      const next = remaining.splice(bestIdx, 1)[0];
+      order.push(next);
+      current = next;
+    }
+    return order;
+  }
+
+  document.getElementById('planRouteBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('planRouteBtn');
+    const statusEl = document.getElementById('routeStatus');
+    const summaryCard = document.getElementById('routeSummaryCard');
+    if (ORS_API_KEY.includes('PASTE_YOUR')) {
+      statusEl.style.display = 'block';
+      statusEl.textContent = 'Setup needed: paste your free OpenRouteService API key into index.html.';
+      return;
+    }
+    if (!dumpMapLoaded || Object.keys(siteMarkers).length === 0) {
+      statusEl.style.display = 'block';
+      statusEl.textContent = 'No active sites to route to yet.';
+      return;
+    }
+    btn.disabled = true;
+    statusEl.style.display = 'block';
+    statusEl.textContent = 'Calculating route...';
+    summaryCard.style.display = 'none';
+
+    try {
+      // active sites only — Cleared sites are excluded
+      const activePoints = Object.entries(siteMarkers)
+        .filter(([, entry]) => entry.latest.Status !== 'Cleared')
+        .map(([siteId, entry]) => ({
+          siteId,
+          lat: entry.marker.getPosition().lat(),
+          lng: entry.marker.getPosition().lng(),
+        }));
+
+      if (activePoints.length === 0) {
+        statusEl.textContent = 'All logged sites are already marked Cleared — nothing to route to.';
+        btn.disabled = false;
+        return;
+      }
+
+      const ordered = nearestNeighborOrder(VPS_COORDS, activePoints);
+      const coordsForRoute = [VPS_COORDS, ...ordered, VPS_COORDS].map(p => [p.lng, p.lat]);
+
+      const resp = await fetch('https://api.openrouteservice.org/v2/directions/foot-walking/geojson', {
+        method: 'POST',
+        headers: { 'Authorization': ORS_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coordinates: coordsForRoute }),
+      });
+      if (!resp.ok) throw new Error('Route request failed (' + resp.status + ')');
+      const geojson = await resp.json();
+      const feature = geojson.features[0];
+      const pathCoords = feature.geometry.coordinates.map(c => ({ lat: c[1], lng: c[0] }));
+      const summary = feature.properties.summary; // { distance (m), duration (s) }
+
+      if (routePolyline) routePolyline.setMap(null);
+      routePolyline = new google.maps.Polyline({
+        path: pathCoords, strokeColor: '#2E5339', strokeWeight: 4, strokeOpacity: 0.9,
+      });
+      routePolyline.setMap(dumpMap);
+
+      const bounds = new google.maps.LatLngBounds();
+      pathCoords.forEach(p => bounds.extend(p));
+      dumpMap.fitBounds(bounds);
+
+      document.getElementById('routeStopsLine').textContent =
+        `Round trip: ${activePoints.length} active site(s), starting and ending at VPS.`;
+      document.getElementById('routeDistanceLine').textContent =
+        `Estimated distance: ${(summary.distance / 1000).toFixed(1)} km · Estimated time: ${Math.round(summary.duration / 60)} min (walking).`;
+      summaryCard.style.display = 'block';
+      statusEl.style.display = 'none';
+    } catch (err) {
+      statusEl.textContent = 'Could not calculate route — check your API key and connection, then try again.';
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  function showSiteHistory(siteId, history) {
+    const card = document.getElementById('siteHistoryCard');
+    const list = document.getElementById('siteHistoryList');
+    document.getElementById('historySiteId').textContent = siteId;
+    list.innerHTML = history.slice().reverse().map(h => `
+      <div style="display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--line);">
+        ${h.PhotoURL ? `<img src="${h.PhotoURL}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;flex-shrink:0;">` : ''}
+        <div>
+          <div style="font-weight:700; font-size:13px; color:${STATUS_COLORS[h.Status] || '#333'};">${h.Status}</div>
+          <div style="font-size:12px; color:var(--ink-soft);">${h.Date} · ${h.RecordedBy || ''}</div>
+          <div style="font-size:13px; margin-top:2px;">${h.Description || ''}</div>
+        </div>
+      </div>`).join('');
+    card.style.display = 'block';
+  }
+
+  // ---------- AI waste classification (MobileNet, lazy-loaded) ----------
+  // Uses a general-purpose pretrained model, not one trained on waste
+  // specifically — category mapping and tile-grid estimates are
+  // approximate by design and labelled as such throughout.
+  let mobilenetModel = null, tfScriptsLoaded = false;
+  const DECOMP_INFO = {
+    Organic: "Typically breaks down in 2\u20138 weeks under normal composting conditions. Best disposed of via composting rather than open dumping or burning.",
+    Plastic: "Can take 450 years or more to break down in the environment. Recycle where possible; avoid burning \u2014 it releases toxic fumes.",
+    Paper: "Usually decomposes in 2\u20136 weeks if uncoated. Recycle or compost \u2014 avoid mixing with plastic-coated paper.",
+    Glass: "Does not meaningfully decompose \u2014 it can persist almost indefinitely. Glass can be recycled endlessly without losing quality.",
+    Metal: "Can take 50\u2013200+ years to decompose depending on the metal. Has high scrap value \u2014 recycle rather than discard.",
+    Other: "Decomposition time varies widely. When unsure of the material, avoid burning it and set it aside for manual sorting.",
+  };
+  const LABEL_KEYWORDS = {
+    Organic: ['banana', 'apple', 'orange', 'fruit', 'vegetable', 'corn', 'mushroom', 'food', 'bread', 'egg', 'pizza', 'lemon', 'fig', 'pineapple', 'strawberry'],
+    Plastic: ['bottle', 'plastic', 'cup', 'container', 'bag', 'bucket', 'tupperware', 'syringe'],
+    Paper: ['envelope', 'paper', 'carton', 'notebook', 'newspaper', 'book', 'cardboard', 'box'],
+    Glass: ['wine bottle', 'beer bottle', 'vase', 'jar', 'glass'],
+    Metal: ['can', 'tin', 'spoon', 'fork', 'knife', 'wrench', 'nail', 'screw', 'foil'],
+  };
+  function mapLabelToCategory(label) {
+    const lower = label.toLowerCase();
+    for (const [category, keywords] of Object.entries(LABEL_KEYWORDS)) {
+      if (keywords.some(k => lower.includes(k))) return category;
+    }
+    return 'Other';
+  }
+  function loadScriptOnce(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = resolve; s.onerror = () => reject(new Error('Failed to load ' + src));
+      document.body.appendChild(s);
+    });
+  }
+  async function ensureModelLoaded(statusEl) {
+    if (mobilenetModel) return mobilenetModel;
+    if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = 'Loading classification model (first time only)...'; }
+    if (!tfScriptsLoaded) {
+      await loadScriptOnce('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js');
+      await loadScriptOnce('https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js');
+      tfScriptsLoaded = true;
+    }
+    mobilenetModel = await mobilenet.load();
+    if (statusEl) statusEl.style.display = 'none';
+    return mobilenetModel;
+  }
+
+  async function classifySingleImage(imgEl) {
+    const model = await ensureModelLoaded(document.getElementById('identifyLoadStatus'));
+    const predictions = await model.classify(imgEl);
+    const top = predictions[0];
+    return { label: top.className.split(',')[0], confidence: top.probability, category: mapLabelToCategory(top.className) };
+  }
+
+  async function classifyTileGrid(imgEl, cols, rows, statusEl) {
+    const model = await ensureModelLoaded(statusEl);
+    const tileW = imgEl.naturalWidth / cols, tileH = imgEl.naturalHeight / rows;
+    const counts = {};
+    const tileCategories = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 224; canvas.height = 224;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(imgEl, c * tileW, r * tileH, tileW, tileH, 0, 0, 224, 224);
+        const preds = await model.classify(canvas);
+        const category = mapLabelToCategory(preds[0].className);
+        counts[category] = (counts[category] || 0) + 1;
+        tileCategories.push(category);
+      }
+    }
+    return { counts, total: cols * rows, tileCategories };
+  }
+
+  const CATEGORY_COLORS = { Organic: '#2E5339', Plastic: '#8C6D3F', Paper: '#B8A46A', Glass: '#7FA6A0', Metal: '#9C9284', Other: '#C9C2AE' };
+
+  // ---------- Identify Waste tab ----------
+  let identifyPhotoImg = null;
+  const identifyPhotoInput = document.getElementById('identifyPhotoInput');
+  const identifyStatus = document.getElementById('identifyStatus');
+  const identifyPreview = document.getElementById('identifyPreview');
+  const identifyBtn = document.getElementById('identifyBtn');
+  const mixedPileCheckbox = document.getElementById('mixedPileCheckbox');
+
+  identifyPhotoInput.addEventListener('change', () => {
+    const file = identifyPhotoInput.files[0];
+    if (!file) { identifyStatus.textContent = 'No photo selected.'; identifyBtn.disabled = true; return; }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        identifyPhotoImg = img;
+        identifyPreview.src = e.target.result;
+        identifyPreview.style.display = 'block';
+        identifyStatus.textContent = 'Photo ready.';
+        identifyBtn.disabled = false;
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  identifyBtn.addEventListener('click', async () => {
+    if (!identifyPhotoImg) return;
+    identifyBtn.disabled = true;
+    const originalText = identifyBtn.textContent;
+    identifyBtn.textContent = 'Analyzing...';
+    const resultCard = document.getElementById('identifyResultCard');
+    const singleResult = document.getElementById('identifySingleResult');
+    const gridResult = document.getElementById('identifyGridResult');
+    try {
+      if (mixedPileCheckbox.checked) {
+        singleResult.style.display = 'none';
+        gridResult.style.display = 'block';
+        const { counts, total } = await classifyTileGrid(identifyPhotoImg, 4, 3, document.getElementById('identifyLoadStatus'));
+        renderGridBreakdown(counts, total, 'identifyGridBreakdown');
+      } else {
+        gridResult.style.display = 'none';
+        singleResult.style.display = 'block';
+        const result = await classifySingleImage(identifyPhotoImg);
+        document.getElementById('identifyCategoryLabel').textContent = `Suggested category: ${result.category}`;
+        document.getElementById('identifyConfidence').textContent = `Based on "${result.label}" (${Math.round(result.confidence * 100)}% model confidence) — please confirm this looks right.`;
+        document.getElementById('identifyDecompInfo').textContent = DECOMP_INFO[result.category] || DECOMP_INFO.Other;
+      }
+      resultCard.style.display = 'block';
+    } catch (err) {
+      identifyStatus.textContent = 'Could not analyze photo — check your connection and try again.';
+    } finally {
+      identifyBtn.disabled = false;
+      identifyBtn.textContent = originalText;
+    }
+  });
+
+  function renderGridBreakdown(counts, total, targetId) {
+    const div = document.getElementById(targetId);
+    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    div.innerHTML = entries.map(([cat, n]) => {
+      const pct = Math.round(n / total * 100);
+      return `<div class="barrier-row">
+        <div class="barrier-label">${cat} \u2014 ${n} of ${total} tiles (${pct}%)</div>
+        <div class="barrier-bar-track"><div class="barrier-bar-fill" style="width:${pct}%; background:${CATEGORY_COLORS[cat] || '#999'};"></div></div>
+      </div>`;
+    }).join('');
+  }
+
+  // ---------- Activity Log ----------
+  async function loadActivityLog() {
+    const updated = document.getElementById('activityUpdated');
+    const list = document.getElementById('activityList');
+    const empty = document.getElementById('activityEmpty');
+    const summary = document.getElementById('activitySummary');
+    updated.textContent = 'Loading...';
+    if (WEB_APP_URL.includes('PASTE_YOUR')) {
+      updated.textContent = 'Setup needed: paste the Apps Script URL into index.html.';
+      return;
+    }
+    try {
+      const data = await jsonp(WEB_APP_URL + '?action=activityLog');
+      const entries = data.entries || [];
+      updated.textContent = 'Updated ' + new Date().toLocaleString();
+
+      if (entries.length === 0) {
+        empty.style.display = 'block';
+        list.innerHTML = '';
+        summary.innerHTML = '';
+        return;
+      }
+      empty.style.display = 'none';
+
+      // per-person entry counts, for a quick "who's contributing" view
+      const counts = {};
+      entries.forEach(e => { const u = e.User || '(no name given)'; counts[u] = (counts[u] || 0) + 1; });
+      summary.innerHTML = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, n]) => `<span class="stat" style="padding:8px 12px;"><span class="label" style="margin-bottom:2px;">${name}</span><span class="value" style="font-size:16px;">${n} entr${n === 1 ? 'y' : 'ies'}</span></span>`)
+        .join('');
+
+      list.innerHTML = entries.map(e => {
+        const ts = e.Timestamp ? new Date(e.Timestamp).toLocaleString() : '';
+        return `<div style="padding:10px 0; border-bottom:1px solid var(--line);">
+          <div style="display:flex; justify-content:space-between; gap:10px;">
+            <strong style="font-size:13px; color:var(--soil-dark);">${e.Type || ''}</strong>
+            <span style="font-size:12px; color:var(--ink-soft);">${ts}</span>
+          </div>
+          <div style="font-size:13px;">${e.User || '(no name given)'}${e.Details ? ' — ' + e.Details : ''}</div>
+        </div>`;
+      }).join('');
+    } catch (err) {
+      updated.textContent = 'Could not load — check the deployment URL and try again.';
+    }
+  }
+  document.getElementById('activityRefreshBtn').addEventListener('click', loadActivityLog);
+
+  // ---------- Dashboard (JSONP GET, since Apps Script has no CORS headers) ----------
+  let compositionChart, hostelChart, trendChart;
+
+  function jsonp(url) {
+    return new Promise((resolve, reject) => {
+      const cbName = 'cb_' + Math.random().toString(36).slice(2);
+      window[cbName] = (data) => { resolve(data); cleanup(); };
+      const script = document.createElement('script');
+      script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName;
+      script.onerror = () => { reject(new Error('Network error')); cleanup(); };
+      function cleanup() { document.body.removeChild(script); delete window[cbName]; }
+      document.body.appendChild(script);
+      setTimeout(() => { if (window[cbName]) { reject(new Error('Timed out')); cleanup(); } }, 10000);
+    });
+  }
+
+  function pct(v) { return (v === null || v === undefined || isNaN(v)) ? '–' : (v * 100).toFixed(0) + '%'; }
+  function num(v, d) { return (v === null || v === undefined || isNaN(v)) ? '–' : v.toFixed(d === undefined ? 1 : d); }
+
+  async function loadDashboard() {
+    document.getElementById('lastUpdated').textContent = 'Loading...';
+    if (WEB_APP_URL.includes('PASTE_YOUR')) {
+      document.getElementById('lastUpdated').textContent = 'Setup needed: paste the Apps Script URL into index.html.';
+      return;
+    }
+    try {
+      const data = await jsonp(WEB_APP_URL + '?action=dashboard');
+      document.getElementById('lastUpdated').textContent = 'Updated ' + new Date(data.generatedAt).toLocaleString();
+
+      document.getElementById('s-hh-n').textContent = data.households.n;
+      document.getElementById('s-audit-n').textContent = data.audits.n;
+      document.getElementById('s-hh-seg').textContent = pct(data.households.pctSegregating);
+      document.getElementById('s-int-n').textContent = data.interviews.n;
+      document.getElementById('s-reduction').textContent = pct(data.hostel.pctReductionPerCapita);
+      document.getElementById('s-compliance').textContent = pct(data.hostel.pilotAvgCompliance);
+
+      // Progress-to-target (targets are planning constants, not sheet-derived)
+      const HOUSEHOLD_TARGET = [60, 100];
+      const AUDIT_TARGET = [15, 20];
+      document.getElementById('s-hh-progress').textContent =
+        `${data.households.n} of ${HOUSEHOLD_TARGET[0]}–${HOUSEHOLD_TARGET[1]} target (${Math.min(100, Math.round(data.households.n / HOUSEHOLD_TARGET[0] * 100))}%)`;
+      document.getElementById('s-audit-progress').textContent =
+        `${data.audits.n} of ${AUDIT_TARGET[0]}–${AUDIT_TARGET[1]}+ target`;
+
+      // Barrier breakdown
+      const barrierDiv = document.getElementById('barrierBreakdown');
+      const barrierEmpty = document.getElementById('barrierEmpty');
+      const barriers = data.households.segregationBarriers || {};
+      const barrierEntries = Object.entries(barriers);
+      if (barrierEntries.length === 0) {
+        barrierEmpty.style.display = 'block';
+        barrierDiv.innerHTML = '';
+      } else {
+        barrierEmpty.style.display = 'none';
+        const total = barrierEntries.reduce((s, [, c]) => s + c, 0);
+        barrierDiv.innerHTML = barrierEntries
+          .sort((a, b) => b[1] - a[1])
+          .map(([label, count]) => {
+            const p = Math.round(count / total * 100);
+            return `<div class="barrier-row">
+              <div class="barrier-label">${label} — ${count} (${p}%)</div>
+              <div class="barrier-bar-track"><div class="barrier-bar-fill" style="width:${p}%"></div></div>
+            </div>`;
+          }).join('');
+      }
+
+      // Auto-written summary sentences
+      const s = data.summarySentences || {};
+      document.getElementById('sentence-baseline').textContent = s.baselineVsPilot || '–';
+      document.getElementById('sentence-benchmark').textContent = s.benchmark || '–';
+      document.getElementById('sentence-dumpsites').textContent = s.dumpSites || '–';
+
+      // AI classification validation
+      const aiVal = data.audits.aiValidation;
+      const aiValText = document.getElementById('aiValidationText');
+      if (aiVal) {
+        const agreementPct = Math.round((1 - aiVal.avgAbsDifferencePct) * 100);
+        aiValText.textContent = `Based on ${aiVal.samplesCompared} sample(s) tested with both methods, the AI tile-grid estimate differed from the manual hand-sorted result by an average of ${Math.round(aiVal.avgAbsDifferencePct * 100)} percentage points (~${agreementPct}% agreement). This is a rough general-purpose model, not trained specifically on waste.`;
+      } else {
+        aiValText.textContent = 'Not enough tested samples yet — need at least one Waste Audit entry with both a manual result and an AI-assisted estimate.';
+      }
+
+      // Composition chart
+      const compEmpty = document.getElementById('compositionEmpty');
+      if (data.audits.n > 0 && data.audits.avgPctOrganic !== null) {
+        compEmpty.style.display = 'none';
+        const organic = data.audits.avgPctOrganic || 0;
+        const recyclable = data.audits.avgPctRecyclable || 0;
+        const other = Math.max(0, 1 - organic - recyclable);
+        if (compositionChart) compositionChart.destroy();
+        compositionChart = new Chart(document.getElementById('chartComposition'), {
+          type: 'doughnut',
+          data: {
+            labels: ['Organic/Wet', 'Recyclable (plastic/paper/glass/metal)', 'Other'],
+            datasets: [{ data: [organic, recyclable, other], backgroundColor: ['#2E5339', '#8C6D3F', '#C9C2AE'] }],
+          },
+          options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } },
+        });
+      } else {
+        compEmpty.style.display = 'block';
+        if (compositionChart) { compositionChart.destroy(); compositionChart = null; }
+      }
+
+      // Hostel baseline vs pilot chart
+      const hostelEmpty = document.getElementById('hostelEmpty');
+      if (data.hostel.baselineDays > 0 || data.hostel.pilotDays > 0) {
+        hostelEmpty.style.display = 'none';
+        if (hostelChart) hostelChart.destroy();
+        hostelChart = new Chart(document.getElementById('chartHostel'), {
+          type: 'bar',
+          data: {
+            labels: ['Baseline', 'Pilot'],
+            datasets: [{
+              label: 'Avg per-capita disposal (kg/day)',
+              data: [data.hostel.baselineAvgPerCapitaKg || 0, data.hostel.pilotAvgPerCapitaKg || 0],
+              backgroundColor: ['#8C6D3F', '#2E5339'],
+            }],
+          },
+          options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+        });
+      } else {
+        hostelEmpty.style.display = 'block';
+        if (hostelChart) { hostelChart.destroy(); hostelChart = null; }
+      }
+
+      // Short-range trend chart
+      const trendEmpty = document.getElementById('trendEmpty');
+      if (data.hostel.trend) {
+        trendEmpty.style.display = 'none';
+        if (trendChart) trendChart.destroy();
+        const t = data.hostel.trend;
+        trendChart = new Chart(document.getElementById('chartTrend'), {
+          type: 'line',
+          data: {
+            labels: ['Now', `Day ${t.projectedDay} (projected)`],
+            datasets: [{
+              label: 'Per-capita disposal (kg/day)',
+              data: [data.hostel.pilotAvgPerCapitaKg || 0, t.projectedPerCapitaKg],
+              borderColor: '#2E5339', backgroundColor: '#2E5339',
+              borderDash: [0], pointRadius: 5, tension: 0,
+            }],
+          },
+          options: {
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } },
+          },
+        });
+      } else {
+        trendEmpty.style.display = 'block';
+        if (trendChart) { trendChart.destroy(); trendChart = null; }
+      }
+    } catch (err) {
+      document.getElementById('lastUpdated').textContent = 'Could not load — check the deployment URL and try again.';
+    }
+  }
+
+  document.getElementById('refreshBtn').addEventListener('click', loadDashboard);
+  loadDashboard();
+</script>
+</body>
+</html>

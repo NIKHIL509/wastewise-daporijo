@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WasteWise Daporijo</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<!-- Chart.js is lazy-loaded on first use (Dashboard, Waste Audit charts) — keeps the initial page load lighter, especially on memory-constrained phones -->
 <style>
   :root {
     --soil: #2E5339;
@@ -264,11 +264,6 @@
       <p class="empty" id="barrierEmpty" style="display:none;">No data yet — logged once households reporting "No" to segregation come in.</p>
     </div>
 
-    <div class="card">
-      <h2>AI Classification Validation</h2>
-      <p class="hint" id="aiValidationText">Not enough tested samples yet — need at least one Waste Audit entry with both a manual result and an AI-assisted estimate.</p>
-    </div>
-
     <div class="card sentence-card">
       <h2>What the Numbers Say</h2>
       <p id="sentence-baseline">–</p>
@@ -398,16 +393,11 @@
       </div>
 
       <div class="card">
-        <h2>AI-Assisted Estimate (optional — for accuracy validation)</h2>
-        <p class="hint" style="margin-bottom:10px;">Photograph this same sample and run the tile-grid tool for a rough, independent estimate to compare against your hand-sorted weights above. Purely optional — skip if you're short on time.</p>
+        <h2>Sample Photo (optional — for authenticity)</h2>
+        <p class="hint" style="margin-bottom:10px;">Photograph this sample as evidence alongside your hand-sorted weights above.</p>
         <input type="file" accept="image/*" capture="environment" id="auditPhotoInput">
         <p class="hint" id="auditPhotoStatus" style="margin-top:8px;">No photo selected.</p>
         <img id="auditPhotoPreview" style="display:none; max-width:100%; border-radius:10px; margin-top:10px; border:1px solid var(--line);">
-        <button class="submit" type="button" id="auditAnalyzeBtn" style="margin-top:12px; background:#8C6D3F;" disabled>Analyze this sample</button>
-        <p class="hint" id="auditAnalyzeStatus" style="margin-top:8px; display:none;"></p>
-        <div id="auditGridCanvasWrap" style="margin-top:12px;"></div>
-        <div class="chart-wrap" id="auditGridChartWrap" style="max-width:280px; margin:12px auto; display:none;"><canvas id="auditGridChart"></canvas></div>
-        <div id="auditGridBreakdown" style="margin-top:12px;"></div>
       </div>
       <button class="submit" type="submit">Save audit entry</button>
       <div class="status" id="status-audit"></div>
@@ -604,33 +594,21 @@
   <section id="view-identifywaste" class="view">
     <div class="card">
       <h2>Identify a Waste Item</h2>
-      <p class="hint" style="margin-bottom:12px;">Take a photo of a single item for a category suggestion and disposal tips. For a genuinely mixed pile, the estimate below is approximate — see the note under the result.</p>
+      <p class="hint" style="margin-bottom:12px;">Take a photo of a single item for a category suggestion and disposal tips. Works best on one clear item at a time.</p>
       <input type="file" accept="image/*" capture="environment" id="identifyPhotoInput">
       <p class="hint" id="identifyStatus" style="margin-top:8px;">No photo selected.</p>
       <img id="identifyPreview" style="display:none; max-width:100%; border-radius:10px; margin-top:10px; border:1px solid var(--line);">
-      <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size:14px; cursor:pointer;">
-        <input type="checkbox" id="mixedPileCheckbox"> This is a mixed pile, not a single item
-      </label>
       <button class="submit" type="button" id="identifyBtn" style="margin-top:14px;" disabled>Identify</button>
-      <p class="hint" id="identifyLoadStatus" style="margin-top:8px; display:none;"></p>
     </div>
 
     <div class="card" id="identifyResultCard" style="display:none;">
       <h2>Result</h2>
-      <div id="identifySingleResult" style="display:none;">
+      <div id="identifySingleResult">
         <p style="font-size:16px; font-weight:700; color:var(--soil-dark);" id="identifyCategoryLabel"></p>
         <p class="hint" id="identifyConfidence"></p>
         <div style="margin-top:14px; padding:14px; border-radius:10px; background:var(--paper); border:1px solid var(--line);">
           <p style="font-size:13px; font-weight:700; margin:0 0 6px; color:var(--soil);">Decomposition & disposal</p>
           <p style="font-size:14px; margin:0;" id="identifyDecompInfo"></p>
-        </div>
-      </div>
-      <div id="identifyGridResult" style="display:none;">
-        <div id="identifyGridCanvasWrap" style="margin-bottom:12px;"></div>
-        <div class="chart-wrap" style="max-width:280px; margin:0 auto 12px;"><canvas id="identifyGridChart"></canvas></div>
-        <div id="identifyGridBreakdown"></div>
-        <div style="margin-top:10px; padding:10px 12px; border-radius:10px; background:#FDF3D0; color:#8C6D3F; font-size:13px; font-weight:700;">
-          Approximate estimate only — based on the fraction of image tiles in each category, not exact weight or volume.
         </div>
       </div>
     </div>
@@ -845,24 +823,14 @@
       }
     }, 50);
   });
-  wireForm('form-audit', 'audit', 'status-audit', () => ({
-    aiEstOrganic: auditAiEstimate.organic, aiEstRecyclable: auditAiEstimate.recyclable, aiEstOther: auditAiEstimate.other,
-    photoBase64: auditPhotoBase64,
-  }));
+  wireForm('form-audit', 'audit', 'status-audit', () => ({ photoBase64: auditPhotoBase64 }));
   document.getElementById('form-audit').addEventListener('submit', () => {
     setTimeout(() => {
       const statusEl = document.getElementById('status-audit');
       if (statusEl.classList.contains('ok')) {
-        auditAiEstimate = { organic: '', recyclable: '', other: '' };
-        auditPhotoImg = null;
         auditPhotoBase64 = '';
         document.getElementById('auditPhotoPreview').style.display = 'none';
         document.getElementById('auditPhotoStatus').textContent = 'No photo selected.';
-        document.getElementById('auditGridBreakdown').innerHTML = '';
-        document.getElementById('auditGridCanvasWrap').innerHTML = '';
-        if (gridCharts['auditGridChart']) { gridCharts['auditGridChart'].destroy(); delete gridCharts['auditGridChart']; }
-        document.getElementById('auditGridChartWrap').style.display = 'none';
-        document.getElementById('auditAnalyzeBtn').disabled = true;
         document.getElementById('auditGpsStatus').textContent = 'Not captured yet.';
         if (auditPreviewChart) { auditPreviewChart.destroy(); auditPreviewChart = null; }
         document.getElementById('auditPreviewEmpty').style.display = 'block';
@@ -919,7 +887,7 @@
   const AUDIT_WEIGHT_FIELDS = ['organic', 'plastic', 'paper', 'glass', 'metal', 'other'];
   const AUDIT_CHART_COLORS = { organic: '#2E5339', plastic: '#8C6D3F', paper: '#B8A46A', glass: '#7FA6A0', metal: '#9C9284', other: '#C9C2AE' };
   const AUDIT_CHART_LABELS = { organic: 'Organic', plastic: 'Plastic', paper: 'Paper', glass: 'Glass', metal: 'Metal', other: 'Other' };
-  function updateAuditPreviewChart() {
+  async function updateAuditPreviewChart() {
     const form = document.getElementById('form-audit');
     const values = {};
     let total = 0;
@@ -938,6 +906,7 @@
     }
     emptyP.style.display = 'none';
     canvas.style.display = 'block';
+    await ensureChartJsLoaded();
     const labels = AUDIT_WEIGHT_FIELDS.map(f => `${AUDIT_CHART_LABELS[f]} (${Math.round(values[f] / total * 100)}%)`);
     const data = AUDIT_WEIGHT_FIELDS.map(f => values[f]);
     const colors = AUDIT_WEIGHT_FIELDS.map(f => AUDIT_CHART_COLORS[f]);
@@ -957,18 +926,15 @@
     document.querySelector(`#form-audit [name="${f}"]`).addEventListener('input', updateAuditPreviewChart);
   });
 
-  // ---------- Waste Audit: photo (authenticity + optional AI-assisted estimate) ----------
-  let auditAiEstimate = { organic: '', recyclable: '', other: '' };
-  let auditPhotoImg = null;
+  // ---------- Waste Audit: photo (for authenticity) ----------
   let auditPhotoBase64 = '';
   const auditPhotoInput = document.getElementById('auditPhotoInput');
   const auditPhotoStatus = document.getElementById('auditPhotoStatus');
   const auditPhotoPreview = document.getElementById('auditPhotoPreview');
-  const auditAnalyzeBtn = document.getElementById('auditAnalyzeBtn');
 
   auditPhotoInput.addEventListener('change', () => {
     const file = auditPhotoInput.files[0];
-    if (!file) { auditPhotoBase64 = ''; auditPhotoImg = null; auditPhotoStatus.textContent = 'No photo selected.'; auditAnalyzeBtn.disabled = true; return; }
+    if (!file) { auditPhotoBase64 = ''; auditPhotoStatus.textContent = 'No photo selected.'; return; }
     const reader = new FileReader();
     reader.onload = (e) => {
       const rawImg = new Image();
@@ -981,41 +947,15 @@
         const ctx = canvas.getContext('2d');
         ctx.drawImage(rawImg, 0, 0, canvas.width, canvas.height);
         auditPhotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
-        const compressedImg = new Image();
-        compressedImg.onload = () => { auditPhotoImg = compressedImg; };
-        compressedImg.src = auditPhotoBase64;
         auditPhotoPreview.src = auditPhotoBase64;
         auditPhotoPreview.style.display = 'block';
         auditPhotoStatus.textContent = 'Photo ready — saved with this entry for authenticity.';
-        auditAnalyzeBtn.disabled = false;
       };
       rawImg.src = e.target.result;
     };
     reader.readAsDataURL(file);
   });
 
-  auditAnalyzeBtn.addEventListener('click', async () => {
-    if (!auditPhotoImg) return;
-    auditAnalyzeBtn.disabled = true;
-    const originalText = auditAnalyzeBtn.textContent;
-    auditAnalyzeBtn.textContent = 'Analyzing...';
-    try {
-      const markTile = buildAnimatedGridOverlay(auditPhotoPreview.src, 'auditGridCanvasWrap', 4, 3);
-      const { counts, total } = await classifyTileGrid(auditPhotoImg, 4, 3, document.getElementById('auditAnalyzeStatus'),
-        (index, category) => markTile(index, CATEGORY_COLORS[category] || '#999'));
-      renderGridBreakdown(counts, total, 'auditGridBreakdown', 'auditGridChart');
-      const organicFrac = (counts.Organic || 0) / total;
-      const recyclableFrac = ((counts.Plastic || 0) + (counts.Paper || 0) + (counts.Glass || 0) + (counts.Metal || 0)) / total;
-      const otherFrac = Math.max(0, 1 - organicFrac - recyclableFrac);
-      auditAiEstimate = { organic: organicFrac, recyclable: recyclableFrac, other: otherFrac };
-    } catch (err) {
-      document.getElementById('auditAnalyzeStatus').style.display = 'block';
-      document.getElementById('auditAnalyzeStatus').textContent = 'Could not analyze — check your connection and try again.';
-    } finally {
-      auditAnalyzeBtn.disabled = false;
-      auditAnalyzeBtn.textContent = originalText;
-    }
-  });
 
   // ---------- Reusable GPS capture wiring ----------
   function wireGpsButton(btnId, statusId, latId, lngId) {
@@ -1469,15 +1409,20 @@
   // Uses a general-purpose pretrained model, not one trained on waste
   // specifically — category mapping and tile-grid estimates are
   // approximate by design and labelled as such throughout.
-  let mobilenetModel = null, teachableModel = null, tfScriptsLoaded = false;
-  // ---------- Optional: your own trained Teachable Machine model ----------
-  // Train one free at teachablemachine.withgoogle.com (Image Project),
-  // using class names that exactly match: Organic, Plastic, Paper, Glass,
-  // Metal, Other (or a subset). Export → "Upload my model" → copy the
-  // shareable link here, ending in a slash. Leave blank to keep using the
-  // generic pretrained model — everything else works identically either way.
-  const TEACHABLE_MODEL_URL = "";
-  const KNOWN_CATEGORIES = ['Organic', 'Plastic', 'Paper', 'Glass', 'Metal', 'Other'];
+  function loadScriptOnce(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = resolve; s.onerror = () => reject(new Error('Failed to load ' + src));
+      document.body.appendChild(s);
+    });
+  }
+  let chartJsLoaded = false;
+  async function ensureChartJsLoaded() {
+    if (chartJsLoaded || window.Chart) { chartJsLoaded = true; return; }
+    await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js');
+    chartJsLoaded = true;
+  }
+
   const DECOMP_INFO = {
     Organic: "Typically breaks down in 2\u20138 weeks under normal composting conditions. Best disposed of via composting rather than open dumping or burning.",
     Plastic: "Can take 450 years or more to break down in the environment. Recycle where possible; avoid burning \u2014 it releases toxic fumes.",
@@ -1486,148 +1431,53 @@
     Metal: "Can take 50\u2013200+ years to decompose depending on the metal. Has high scrap value \u2014 recycle rather than discard.",
     Other: "Decomposition time varies widely. When unsure of the material, avoid burning it and set it aside for manual sorting.",
   };
-  const LABEL_KEYWORDS = {
-    Organic: ['banana', 'apple', 'orange', 'fruit', 'vegetable', 'corn', 'mushroom', 'food', 'bread', 'egg', 'pizza', 'lemon', 'fig', 'pineapple', 'strawberry'],
-    Plastic: ['bottle', 'plastic', 'cup', 'container', 'bag', 'bucket', 'tupperware', 'syringe'],
-    Paper: ['envelope', 'paper', 'carton', 'notebook', 'newspaper', 'book', 'cardboard', 'box'],
-    Glass: ['wine bottle', 'beer bottle', 'vase', 'jar', 'glass'],
-    Metal: ['can', 'tin', 'spoon', 'fork', 'knife', 'wrench', 'nail', 'screw', 'foil'],
-  };
-  function mapLabelToCategory(label) {
-    const lower = label.toLowerCase();
-    for (const [category, keywords] of Object.entries(LABEL_KEYWORDS)) {
-      if (keywords.some(k => lower.includes(k))) return category;
-    }
-    return 'Other';
+  function generateRequestId() {
+    return 'req_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
   }
-  function resolveCategory(className) {
-    if (teachableModel) {
-      const matched = KNOWN_CATEGORIES.find(c => c.toLowerCase() === className.toLowerCase());
-      return matched || 'Other';
-    }
-    return mapLabelToCategory(className);
-  }
-  function loadScriptOnce(src) {
-    return new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = src; s.onload = resolve; s.onerror = () => reject(new Error('Failed to load ' + src));
-      document.body.appendChild(s);
+  // Classification runs server-side (Hugging Face, via the Apps Script
+  // backend) — no model is ever loaded into the browser, which is what was
+  // causing low-memory crashes before. The POST triggers classification;
+  // since Apps Script POST responses can't be read directly by the browser,
+  // the result is fetched right after with a GET request instead.
+  async function classifyWasteServerSide(photoBase64, statusEl) {
+    const requestId = generateRequestId();
+    await fetch(WEB_APP_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ type: 'classifyWaste', photoBase64, requestId }),
     });
-  }
-  async function ensureModelLoaded(statusEl) {
-    if (mobilenetModel || teachableModel) return;
-    if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = 'Loading classification model (first time only)...'; }
-    if (TEACHABLE_MODEL_URL) {
-      if (!tfScriptsLoaded) {
-        await loadScriptOnce('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js');
-        await loadScriptOnce('https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js');
-        tfScriptsLoaded = true;
-      }
-      teachableModel = await tmImage.load(TEACHABLE_MODEL_URL + 'model.json', TEACHABLE_MODEL_URL + 'metadata.json');
-    } else {
-      if (!tfScriptsLoaded) {
-        await loadScriptOnce('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js');
-        await loadScriptOnce('https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js');
-        tfScriptsLoaded = true;
-      }
-      // A lighter model variant (smaller download, less memory) — trades a
-      // little accuracy for reliability on lower-end/constrained phones.
-      mobilenetModel = await mobilenet.load({ version: 1, alpha: 0.25 });
+    for (let attempt = 0; attempt < 10; attempt++) {
+      await new Promise(res => setTimeout(res, 900));
+      if (statusEl) statusEl.textContent = 'Identifying...';
+      const data = await jsonp(WEB_APP_URL + '?action=getClassifyResult&requestId=' + requestId);
+      if (data.status === 'ok' || data.status === 'error') return data;
     }
-    if (statusEl) statusEl.style.display = 'none';
+    return { status: 'error', message: 'Timed out waiting for a result.' };
   }
-  async function runModelPredict(imgOrCanvas) {
-    const preds = teachableModel ? await teachableModel.predict(imgOrCanvas) : await mobilenetModel.classify(imgOrCanvas);
-    return preds.slice().sort((a, b) => b.probability - a.probability);
-  }
-
-  async function classifySingleImage(imgEl) {
-    await ensureModelLoaded(document.getElementById('identifyLoadStatus'));
-    const predictions = await runModelPredict(imgEl);
-    const top = predictions[0];
-    return { label: top.className.split(',')[0], confidence: top.probability, category: resolveCategory(top.className) };
-  }
-
-  async function classifyTileGrid(imgEl, cols, rows, statusEl, onTileDone) {
-    await ensureModelLoaded(statusEl);
-    const tileW = imgEl.naturalWidth / cols, tileH = imgEl.naturalHeight / rows;
-    const counts = {};
-    const tileCategories = [];
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const canvas = document.createElement('canvas');
-        canvas.width = 224; canvas.height = 224;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(imgEl, c * tileW, r * tileH, tileW, tileH, 0, 0, 224, 224);
-        const preds = await runModelPredict(canvas);
-        const category = resolveCategory(preds[0].className);
-        counts[category] = (counts[category] || 0) + 1;
-        tileCategories.push(category);
-        if (onTileDone) {
-          const index = r * cols + c;
-          onTileDone(index, category);
-          await new Promise(res => setTimeout(res, 60)); // small pause so the scan animation is visible
-        }
-      }
-    }
-    return { counts, total: cols * rows, tileCategories };
-  }
-
-  // Builds an image with an animated scanning grid overlay. Returns a
-  // markTile(index, color) function to call as each tile finishes.
-  function buildAnimatedGridOverlay(imgSrc, containerId, cols, rows) {
-    const container = document.getElementById(containerId);
-    container.innerHTML = '';
-    container.style.position = 'relative';
-    container.style.display = 'inline-block';
-    container.style.width = '100%';
-    const img = document.createElement('img');
-    img.src = imgSrc;
-    img.style.width = '100%';
-    img.style.display = 'block';
-    img.style.borderRadius = '10px';
-    container.appendChild(img);
-    const overlay = document.createElement('div');
-    overlay.style.position = 'absolute';
-    overlay.style.top = 0; overlay.style.left = 0; overlay.style.right = 0; overlay.style.bottom = 0;
-    overlay.style.display = 'grid';
-    overlay.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-    overlay.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
-    const cells = [];
-    for (let i = 0; i < cols * rows; i++) {
-      const cell = document.createElement('div');
-      cell.style.border = '1px solid rgba(255,255,255,0.5)';
-      cell.style.background = 'rgba(46,83,57,0)';
-      cell.style.transition = 'background 0.4s ease';
-      overlay.appendChild(cell);
-      cells.push(cell);
-    }
-    container.appendChild(overlay);
-    return function markTile(index, color) {
-      if (cells[index]) cells[index].style.background = color + 'B3'; // ~70% opacity
-    };
-  }
-
-  const CATEGORY_COLORS = { Organic: '#2E5339', Plastic: '#8C6D3F', Paper: '#B8A46A', Glass: '#7FA6A0', Metal: '#9C9284', Other: '#C9C2AE' };
-  const gridCharts = {}; // canvasId -> Chart instance, so repeated runs don't leak
 
   // ---------- Identify Waste tab ----------
-  let identifyPhotoImg = null;
+  let identifyPhotoBase64 = '';
   const identifyPhotoInput = document.getElementById('identifyPhotoInput');
   const identifyStatus = document.getElementById('identifyStatus');
   const identifyPreview = document.getElementById('identifyPreview');
   const identifyBtn = document.getElementById('identifyBtn');
-  const mixedPileCheckbox = document.getElementById('mixedPileCheckbox');
 
   identifyPhotoInput.addEventListener('change', () => {
     const file = identifyPhotoInput.files[0];
-    if (!file) { identifyStatus.textContent = 'No photo selected.'; identifyBtn.disabled = true; return; }
+    if (!file) { identifyPhotoBase64 = ''; identifyStatus.textContent = 'No photo selected.'; identifyBtn.disabled = true; return; }
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        identifyPhotoImg = img;
-        identifyPreview.src = e.target.result;
+        const maxW = 1000;
+        const scale = Math.min(1, maxW / img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        identifyPhotoBase64 = canvas.toDataURL('image/jpeg', 0.7);
+        identifyPreview.src = identifyPhotoBase64;
         identifyPreview.style.display = 'block';
         identifyStatus.textContent = 'Photo ready.';
         identifyBtn.disabled = false;
@@ -1638,64 +1488,34 @@
   });
 
   identifyBtn.addEventListener('click', async () => {
-    if (!identifyPhotoImg) return;
+    if (!identifyPhotoBase64) return;
+    if (WEB_APP_URL.includes('PASTE_YOUR')) {
+      identifyStatus.textContent = 'Setup needed: paste the Apps Script deployment URL into index.html.';
+      return;
+    }
     identifyBtn.disabled = true;
     const originalText = identifyBtn.textContent;
-    identifyBtn.textContent = 'Analyzing...';
+    identifyBtn.textContent = 'Identifying...';
     const resultCard = document.getElementById('identifyResultCard');
-    const singleResult = document.getElementById('identifySingleResult');
-    const gridResult = document.getElementById('identifyGridResult');
     try {
-      if (mixedPileCheckbox.checked) {
-        singleResult.style.display = 'none';
-        gridResult.style.display = 'block';
-        const markTile = buildAnimatedGridOverlay(identifyPreview.src, 'identifyGridCanvasWrap', 4, 3);
-        const { counts, total } = await classifyTileGrid(identifyPhotoImg, 4, 3, document.getElementById('identifyLoadStatus'),
-          (index, category) => markTile(index, CATEGORY_COLORS[category] || '#999'));
-        renderGridBreakdown(counts, total, 'identifyGridBreakdown', 'identifyGridChart');
+      const result = await classifyWasteServerSide(identifyPhotoBase64, identifyStatus);
+      if (result.status !== 'ok') {
+        identifyStatus.textContent = result.message || 'Could not identify — check your connection and try again.';
       } else {
-        gridResult.style.display = 'none';
-        singleResult.style.display = 'block';
-        const result = await classifySingleImage(identifyPhotoImg);
+        identifyStatus.textContent = 'Photo ready.';
         document.getElementById('identifyCategoryLabel').textContent = `Suggested category: ${result.category}`;
         document.getElementById('identifyConfidence').textContent = `Based on "${result.label}" (${Math.round(result.confidence * 100)}% model confidence) — please confirm this looks right.`;
         document.getElementById('identifyDecompInfo').textContent = DECOMP_INFO[result.category] || DECOMP_INFO.Other;
+        resultCard.style.display = 'block';
       }
-      resultCard.style.display = 'block';
     } catch (err) {
-      identifyStatus.textContent = 'Could not analyze photo — check your connection and try again.';
+      identifyStatus.textContent = 'Could not identify — check your connection and try again.';
     } finally {
       identifyBtn.disabled = false;
       identifyBtn.textContent = originalText;
     }
   });
 
-  function renderGridBreakdown(counts, total, targetId, chartCanvasId) {
-    const div = document.getElementById(targetId);
-    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-    div.innerHTML = entries.map(([cat, n]) => {
-      const pct = Math.round(n / total * 100);
-      return `<div class="barrier-row">
-        <div class="barrier-label">${cat} \u2014 ${n} of ${total} tiles (${pct}%)</div>
-        <div class="barrier-bar-track"><div class="barrier-bar-fill" style="width:${pct}%; background:${CATEGORY_COLORS[cat] || '#999'};"></div></div>
-      </div>`;
-    }).join('');
-
-    if (chartCanvasId) {
-      const canvas = document.getElementById(chartCanvasId);
-      const wrap = canvas.closest('.chart-wrap') || canvas.parentElement;
-      if (wrap) wrap.style.display = 'block';
-      if (gridCharts[chartCanvasId]) gridCharts[chartCanvasId].destroy();
-      gridCharts[chartCanvasId] = new Chart(canvas, {
-        type: 'pie',
-        data: {
-          labels: entries.map(([cat, n]) => `${cat} (${Math.round(n / total * 100)}%)`),
-          datasets: [{ data: entries.map(([, n]) => n), backgroundColor: entries.map(([cat]) => CATEGORY_COLORS[cat] || '#999') }],
-        },
-        options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } } },
-      });
-    }
-  }
 
   // ---------- Activity Log ----------
   async function loadActivityLog() {
@@ -1771,6 +1591,7 @@
       return;
     }
     try {
+      await ensureChartJsLoaded();
       const data = await jsonp(WEB_APP_URL + '?action=dashboard');
       document.getElementById('lastUpdated').textContent = 'Updated ' + new Date(data.generatedAt).toLocaleString();
 
@@ -1816,16 +1637,6 @@
       document.getElementById('sentence-baseline').textContent = s.baselineVsPilot || '–';
       document.getElementById('sentence-benchmark').textContent = s.benchmark || '–';
       document.getElementById('sentence-dumpsites').textContent = s.dumpSites || '–';
-
-      // AI classification validation
-      const aiVal = data.audits.aiValidation;
-      const aiValText = document.getElementById('aiValidationText');
-      if (aiVal) {
-        const agreementPct = Math.round((1 - aiVal.avgAbsDifferencePct) * 100);
-        aiValText.textContent = `Based on ${aiVal.samplesCompared} sample(s) tested with both methods, the AI tile-grid estimate differed from the manual hand-sorted result by an average of ${Math.round(aiVal.avgAbsDifferencePct * 100)} percentage points (~${agreementPct}% agreement). This is a rough general-purpose model, not trained specifically on waste.`;
-      } else {
-        aiValText.textContent = 'Not enough tested samples yet — need at least one Waste Audit entry with both a manual result and an AI-assisted estimate.';
-      }
 
       // Composition chart
       const compEmpty = document.getElementById('compositionEmpty');

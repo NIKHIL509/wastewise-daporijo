@@ -1363,16 +1363,10 @@
       const ordered = nearestNeighborOrder(VPS_COORDS, activePoints);
       const coordsForRoute = [VPS_COORDS, ...ordered, VPS_COORDS].map(p => [p.lng, p.lat]);
 
-      const resp = await fetch('https://api.heigit.org/openrouteservice/v2/directions/foot-walking/geojson', {
-  method: 'POST',
-  headers: { 'Authorization': ORS_API_KEY, 'Content-Type': 'application/json' },
-  body: JSON.stringify({ coordinates: coordsForRoute }),
-});
-      if (!resp.ok) throw new Error('Route request failed (' + resp.status + ')');
-      const geojson = await resp.json();
-      const feature = geojson.features[0];
-      const pathCoords = feature.geometry.coordinates.map(c => ({ lat: c[1], lng: c[0] }));
-      const summary = feature.properties.summary; // { distance (m), duration (s) }
+     const routeResult = await jsonp(WEB_APP_URL + '?action=planRoute&coords=' + encodeURIComponent(JSON.stringify(coordsForRoute)));
+if (routeResult.status !== 'ok') throw new Error(routeResult.message || 'Route request failed');
+const pathCoords = routeResult.pathCoords;
+const summary = { distance: routeResult.distance, duration: routeResult.duration };
 
       if (routePolyline) routePolyline.setMap(null);
       routePolyline = new google.maps.Polyline({

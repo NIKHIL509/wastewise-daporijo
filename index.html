@@ -1363,11 +1363,11 @@
       const ordered = nearestNeighborOrder(VPS_COORDS, activePoints);
       const coordsForRoute = [VPS_COORDS, ...ordered, VPS_COORDS].map(p => [p.lng, p.lat]);
 
-      const resp = await fetch('https://api.openrouteservice.org/v2/directions/foot-walking/geojson', {
-        method: 'POST',
-        headers: { 'Authorization': ORS_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ coordinates: coordsForRoute }),
-      });
+      const resp = await fetch('https://api.heigit.org/openrouteservice/v2/directions/foot-walking/geojson', {
+  method: 'POST',
+  headers: { 'Authorization': ORS_API_KEY, 'Content-Type': 'application/json' },
+  body: JSON.stringify({ coordinates: coordsForRoute }),
+});
       if (!resp.ok) throw new Error('Route request failed (' + resp.status + ')');
       const geojson = await resp.json();
       const feature = geojson.features[0];

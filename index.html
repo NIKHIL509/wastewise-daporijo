@@ -570,10 +570,10 @@
       <p class="hint" style="margin-bottom:10px;">Pins show each site's most recent status. Tap a pin for its photo and full history.</p>
       <div id="dumpMapContainer" style="height:420px; border-radius:12px; overflow:hidden; border:1px solid var(--line);"></div>
       <div style="display:flex; gap:14px; margin-top:10px; flex-wrap:wrap; font-size:12px; color:var(--ink-soft);">
-        <span>● New/Active</span>
-        <span>● Increased</span>
-        <span>● Reduced</span>
-        <span>● Cleared</span>
+        <span><span style="color:#E08E2B;">●</span> N = New/Active</span>
+        <span><span style="color:#C0392B;">●</span> I = Increased</span>
+        <span><span style="color:#D4AC0D;">●</span> R = Reduced</span>
+        <span><span style="color:#27AE60;">●</span> C = Cleared</span>
       </div>
     </div>
     <div class="card">
@@ -663,7 +663,7 @@
   // Google Maps JavaScript API key
   const GOOGLE_MAPS_API_KEY = "AIzaSyCNQpMzAw6znLrpz8mVjxaVXCLrUGppgMw";
   // Default map center — approximate Daporijo town center; adjust if needed
-  const DEFAULT_MAP_CENTER = { lat: 27.983, lng: 94.233 };
+  const DEFAULT_MAP_CENTER = { lat: 27.992972, lng: 94.218139 };
 
   // ---------- Splash screen ----------
   // The Municipal role passcode is checked server-side against the
@@ -1309,12 +1309,13 @@
     });
   }
 
-  // ---------- Plan a Revisit Route (OpenRouteService — free, no billing account) ----------
-  // Uses the same live Google Map already loaded above; only the route line
-  // itself comes from OpenRouteService's free routing, not Google's Directions API.
-  const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjJhMzI5ZDE3YzI4NTQ1YjQ5NTY4NDI4YjZmNzg5ZjZhIiwiaCI6Im11cm11cjY0In0=";
-  const VPS_COORDS = { lat: 27.983, lng: 94.233 }; // adjust to VPS's exact coordinates if known
+  // ---------- Plan a Revisit Route (OpenRouteService via Apps Script) ----------
+  // The ORS key now lives in Code.gs (server-side), not in this file.
+  // Only the route line comes from ORS; the map is the same Google Map above.
+  const VPS_COORDS = { lat: 27.992972, lng: 94.218139 }; // VPS main gate (27°59'34.7"N 94°13'05.3"E)
+  const ROUTE_PROFILE_LABELS = { 'foot-walking': 'walking', 'driving-car': 'by car' };
   let routePolyline = null;
+  let routeVpsMarker = null;
 
   function haversineKm(a, b) {
     const R = 6371;
@@ -1324,7 +1325,7 @@
     return 2 * R * Math.asin(Math.sqrt(s));
   }
   // Nearest-neighbor stop ordering — a fast, reasonable heuristic, not a
-  // guaranteed-shortest solution. Good enough for a handful of daily stops.
+  // guaranteed-shortest solution.
   function nearestNeighborOrder(start, points) {
     const remaining = points.slice();
     const order = [];
@@ -1342,67 +1343,174 @@
     return order;
   }
 
+  function getActiveSites() {
+    return Object.entries(siteMarkers)
+      .filter(([, e]) => e.latest.Status !== 'Cleared')
+      .map(([siteId, e]) => ({
+        siteId,
+        status: e.latest.Status,
+        lat: e.marker.getPosition().lat(),
+        lng: e.marker.getPosition().lng(),
+      }));
+  }
+
+  // ---- "Choose sites" checklist ----
+  const routeSiteModeSelect = document.getElementById('routeSiteModeSelect');
+  const routeSiteChecklist = document.getElementById('routeSiteChecklist');
+
+  function renderRouteChecklist() {
+    const previouslyChecked = new Set(
+      [...routeSiteChecklist.querySelectorAll('input[type=checkbox]:checked')].map(cb => cb.value)
+    );
+    const firstRender = !routeSiteChecklist.dataset.rendered;
+    const active = getActiveSites().sort((a, b) => a.siteId.localeCompare(b.siteId));
+    if (!active.length) {
+      routeSiteChecklist.innerHTML = '<p class="empty" style="margin:0;">No active sites yet — wait for the pins to load on the map above.</p>';
+      return;
+    }
+    const btnStyle = 'background:none; border:1.5px solid var(--line); border-radius:8px; padding:5px 10px; font-size:12px; font-weight:700; color:var(--soil); cursor:pointer;';
+    routeSiteChecklist.innerHTML =
+      `<div style="display:flex; gap:8px; margin-bottom:10px;">
+         <button type="button" data-act="all" style="${btnStyle}">Select all</button>
+         <button type="button" data-act="none" style="${btnStyle}">Clear</button>
+       </div>` +
+      active.map(s => {
+        const checked = firstRender || previouslyChecked.has(s.siteId) ? 'checked' : '';
+        const color = STATUS_COLORS[s.status] || '#666666';
+        return `<label style="display:flex; align-items:center; gap:8px; font-size:13px; margin:0 0 8px; cursor:pointer;">
+          <input type="checkbox" value="${s.siteId}" ${checked}>
+          <span>${s.siteId}</span>
+          <span style="font-size:11px; color:${color};">${s.status}</span>
+        </label>`;
+      }).join('');
+    routeSiteChecklist.dataset.rendered = '1';
+  }
+
+  routeSiteChecklist.addEventListener('click', (e) => {
+    const act = e.target.dataset && e.target.dataset.act;
+    if (!act) return;
+    routeSiteChecklist.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = act === 'all'; });
+  });
+
+  routeSiteModeSelect.addEventListener('change', () => {
+    const choose = routeSiteModeSelect.value === 'choose';
+    routeSiteChecklist.style.display = choose ? 'block' : 'none';
+    if (choose) renderRouteChecklist();
+  });
+
+  // Rebuild the checklist whenever the map's site list refreshes (new data loaded)
+  new MutationObserver(() => {
+    if (routeSiteModeSelect.value === 'choose') renderRouteChecklist();
+  }).observe(document.getElementById('dumpSiteList'), { childList: true });
+
+  // ---- Helpers ----
+  // Same as jsonp() but with a longer timeout — routing can take a few seconds.
+  function jsonpWithTimeout(url, timeoutMs) {
+    return new Promise((resolve, reject) => {
+      const cbName = 'cb_' + Math.random().toString(36).slice(2);
+      const script = document.createElement('script');
+      function cleanup() { if (script.parentNode) script.parentNode.removeChild(script); delete window[cbName]; }
+      window[cbName] = (data) => { resolve(data); cleanup(); };
+      script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName;
+      script.onerror = () => { reject(new Error('Network error — check your connection.')); cleanup(); };
+      document.body.appendChild(script);
+      setTimeout(() => { if (window[cbName]) { reject(new Error('Timed out waiting for the route.')); cleanup(); } }, timeoutMs);
+    });
+  }
+  // Accepts either [{lat, lng}] or ORS-style [[lng, lat]] arrays
+  function toLatLngPath(coords) {
+    return (coords || []).map(p => Array.isArray(p)
+      ? { lat: Number(p[1]), lng: Number(p[0]) }
+      : { lat: Number(p.lat), lng: Number(p.lng) });
+  }
+  function formatDuration(sec) {
+    const mins = Math.round(sec / 60);
+    if (mins < 60) return mins + ' min';
+    return Math.floor(mins / 60) + ' h ' + (mins % 60) + ' min';
+  }
+
+  // ---- Plan Route button ----
   document.getElementById('planRouteBtn').addEventListener('click', async () => {
     const btn = document.getElementById('planRouteBtn');
     const statusEl = document.getElementById('routeStatus');
     const summaryCard = document.getElementById('routeSummaryCard');
-    if (ORS_API_KEY.includes('PASTE_YOUR')) {
-      statusEl.style.display = 'block';
-      statusEl.textContent = 'Setup needed: paste your free OpenRouteService API key into index.html.';
+    const showStatus = (msg) => { statusEl.style.display = 'block'; statusEl.textContent = msg; };
+
+    if (WEB_APP_URL.includes('PASTE_YOUR')) {
+      showStatus('Setup needed: paste the Apps Script deployment URL into index.html.');
       return;
     }
-    if (!dumpMapLoaded || Object.keys(siteMarkers).length === 0) {
-      statusEl.style.display = 'block';
-      statusEl.textContent = 'No active sites to route to yet.';
+    if (!dumpMapLoaded || !dumpMap || Object.keys(siteMarkers).length === 0) {
+      showStatus('The map is still loading, or no sites are logged yet. Wait for the pins to appear, then try again.');
       return;
     }
+
+    let stops = getActiveSites();
+    if (routeSiteModeSelect.value === 'choose') {
+      const chosen = new Set(
+        [...routeSiteChecklist.querySelectorAll('input[type=checkbox]:checked')].map(cb => cb.value)
+      );
+      stops = stops.filter(s => chosen.has(s.siteId));
+      if (!stops.length) { showStatus('Tick at least one site to visit.'); return; }
+    } else if (!stops.length) {
+      showStatus('All logged sites are already marked Cleared — nothing to route to.');
+      return;
+    }
+    if (stops.length > 48) {
+      showStatus('Too many stops for one route (limit 48). Use "Choose sites" to pick fewer.');
+      return;
+    }
+
+    const profile = document.getElementById('routeProfileSelect').value;
     btn.disabled = true;
-    statusEl.style.display = 'block';
-    statusEl.textContent = 'Calculating route...';
+    showStatus('Calculating route...');
     summaryCard.style.display = 'none';
 
     try {
-      // active sites only — Cleared sites are excluded
-      const activePoints = Object.entries(siteMarkers)
-        .filter(([, entry]) => entry.latest.Status !== 'Cleared')
-        .map(([siteId, entry]) => ({
-          siteId,
-          lat: entry.marker.getPosition().lat(),
-          lng: entry.marker.getPosition().lng(),
-        }));
+      const ordered = nearestNeighborOrder(VPS_COORDS, stops);
+      const coords = [VPS_COORDS, ...ordered, VPS_COORDS]
+        .map(p => [Number(p.lng.toFixed(6)), Number(p.lat.toFixed(6))]);
+      const url = WEB_APP_URL + '?action=planRoute'
+        + '&profile=' + encodeURIComponent(profile)
+        + '&coords=' + encodeURIComponent(JSON.stringify(coords));
 
-      if (activePoints.length === 0) {
-        statusEl.textContent = 'All logged sites are already marked Cleared — nothing to route to.';
-        btn.disabled = false;
-        return;
+      const result = await jsonpWithTimeout(url, 30000);
+      if (!result || result.status !== 'ok') {
+        throw new Error((result && result.message) ||
+          'Route request failed — make sure Code.gs has the planRoute action and has been redeployed.');
       }
-
-      const ordered = nearestNeighborOrder(VPS_COORDS, activePoints);
-      const coordsForRoute = [VPS_COORDS, ...ordered, VPS_COORDS].map(p => [p.lng, p.lat]);
-
-     const routeResult = await jsonp(WEB_APP_URL + '?action=planRoute&coords=' + encodeURIComponent(JSON.stringify(coordsForRoute)));
-if (routeResult.status !== 'ok') throw new Error(routeResult.message || 'Route request failed');
-const pathCoords = routeResult.pathCoords;
-const summary = { distance: routeResult.distance, duration: routeResult.duration };
+      const path = toLatLngPath(result.pathCoords);
+      if (path.length < 2) throw new Error('The routing service returned an empty path.');
 
       if (routePolyline) routePolyline.setMap(null);
       routePolyline = new google.maps.Polyline({
-        path: pathCoords, strokeColor: '#2E5339', strokeWeight: 4, strokeOpacity: 0.9,
+        path, strokeColor: '#2E5339', strokeWeight: 4, strokeOpacity: 0.9, map: dumpMap,
       });
-      routePolyline.setMap(dumpMap);
+
+      if (routeVpsMarker) routeVpsMarker.setMap(null);
+      routeVpsMarker = new google.maps.Marker({
+        position: VPS_COORDS, map: dumpMap, title: 'VPS — start/end', zIndex: 999,
+        label: { text: 'VPS', color: '#FFFFFF', fontWeight: 'bold', fontSize: '10px' },
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE, scale: 15,
+          fillColor: '#1F3B2C', fillOpacity: 1, strokeColor: '#FFFFFF', strokeWeight: 2,
+        },
+      });
 
       const bounds = new google.maps.LatLngBounds();
-      pathCoords.forEach(p => bounds.extend(p));
+      path.forEach(p => bounds.extend(p));
       dumpMap.fitBounds(bounds);
 
+      const stopOrder = ['VPS', ...ordered.map(s => s.siteId), 'VPS'].join(' → ');
       document.getElementById('routeStopsLine').textContent =
-        `Round trip: ${activePoints.length} active site(s), starting and ending at VPS.`;
+        `Round trip: ${ordered.length} site(s) — ${stopOrder}`;
       document.getElementById('routeDistanceLine').textContent =
-        `Estimated distance: ${(summary.distance / 1000).toFixed(1)} km · Estimated time: ${Math.round(summary.duration / 60)} min (walking).`;
+        `Estimated distance: ${(Number(result.distance || 0) / 1000).toFixed(1)} km · ` +
+        `Estimated time: ${formatDuration(Number(result.duration || 0))} (${ROUTE_PROFILE_LABELS[profile] || profile}).`;
       summaryCard.style.display = 'block';
       statusEl.style.display = 'none';
     } catch (err) {
-      statusEl.textContent = 'Could not calculate route — check your API key and connection, then try again.';
+      showStatus('Could not calculate route: ' + (err && err.message ? err.message : 'unknown error'));
     } finally {
       btn.disabled = false;
     }
@@ -1443,11 +1551,11 @@ const summary = { distance: routeResult.distance, duration: routeResult.duration
   }
 
   const DECOMP_INFO = {
-    Organic: "Typically breaks down in 2\u20138 weeks under normal composting conditions. Best disposed of via composting rather than open dumping or burning.",
-    Plastic: "Can take 450 years or more to break down in the environment. Recycle where possible; avoid burning \u2014 it releases toxic fumes.",
-    Paper: "Usually decomposes in 2\u20136 weeks if uncoated. Recycle or compost \u2014 avoid mixing with plastic-coated paper.",
-    Glass: "Does not meaningfully decompose \u2014 it can persist almost indefinitely. Glass can be recycled endlessly without losing quality.",
-    Metal: "Can take 50\u2013200+ years to decompose depending on the metal. Has high scrap value \u2014 recycle rather than discard.",
+    Organic: "Typically breaks down in 2–8 weeks under normal composting conditions. Best disposed of via composting rather than open dumping or burning.",
+    Plastic: "Can take 450 years or more to break down in the environment. Recycle where possible; avoid burning — it releases toxic fumes.",
+    Paper: "Usually decomposes in 2–6 weeks if uncoated. Recycle or compost — avoid mixing with plastic-coated paper.",
+    Glass: "Does not meaningfully decompose — it can persist almost indefinitely. Glass can be recycled endlessly without losing quality.",
+    Metal: "Can take 50–200+ years to decompose depending on the metal. Has high scrap value — recycle rather than discard.",
     Other: "Decomposition time varies widely. When unsure of the material, avoid burning it and set it aside for manual sorting.",
   };
   function generateRequestId() {

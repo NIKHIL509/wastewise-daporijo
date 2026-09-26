@@ -610,7 +610,7 @@
   <p class="hint" id="routeStatus" style="margin-top:10px; display:none;"></p>
   <div id="routeSummaryCard" style="display:none; margin-top:12px; padding:14px; border-radius:10px; background:var(--paper); border:1px solid var(--line);">
     <p style="font-weight:700; margin:0 0 6px;" id="routeStopsLine"></p>
-    <p style="margin:0; font-size:13px; color:var(--ink-soft);" id="routeDistanceLine"></p>
+    <p style="margin:0; font-size:13px; color:var(--ink-soft);" id="routeDistanceLine"></p><div id="routeNavLinks" style="display:flex; flex-direction:column; gap:8px; margin-top:12px;"></div>
   </div>
 </div>
   </section>
@@ -1507,7 +1507,7 @@
       document.getElementById('routeDistanceLine').textContent =
         `Estimated distance: ${(Number(result.distance || 0) / 1000).toFixed(1)} km · ` +
         `Estimated time: ${formatDuration(Number(result.duration || 0))} (${ROUTE_PROFILE_LABELS[profile] || profile}).`;
-      summaryCard.style.display = 'block';
+      summaryCard.style.display = 'block'; const navDiv = document.getElementById('routeNavLinks'); const travelMode = profile === 'driving-car' ? 'driving' : 'walking'; const navPts = [VPS_COORDS, ...ordered, VPS_COORDS].map(p => p.lat.toFixed(6) + ',' + p.lng.toFixed(6)); const navLegs = []; for (let i = 0; i < navPts.length - 1; i += 10) navLegs.push(navPts.slice(i, i + 11)); navDiv.innerHTML = navLegs.map((leg, n) => { const wps = leg.slice(1, -1); const url = 'https://www.google.com/maps/dir/?api=1&origin=' + leg[0] + '&destination=' + leg[leg.length - 1] + '&travelmode=' + travelMode + (wps.length ? '&waypoints=' + encodeURIComponent(wps.join('|')) : ''); const label = navLegs.length === 1 ? 'Start navigation in Google Maps' : 'Start navigation - part ' + (n + 1) + ' of ' + navLegs.length; return '<a href="' + url + '" target="_blank" rel="noopener" style="display:block; text-align:center; padding:13px; border-radius:12px; background:var(--soil); color:#fff; font-weight:700; font-size:15px; text-decoration:none;">' + label + '</a>'; }).join(''); document.getElementById('dumpMapContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
       statusEl.style.display = 'none';
     } catch (err) {
       showStatus('Could not calculate route: ' + (err && err.message ? err.message : 'unknown error'));

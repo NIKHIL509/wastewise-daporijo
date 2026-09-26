@@ -586,16 +586,33 @@
       <h2>Site History — <span id="historySiteId"></span></h2>
       <div id="siteHistoryList"></div>
     </div>
-    <div class="card">
-      <h2>Plan a Revisit Route</h2>
-      <p class="hint" style="margin-bottom:10px;">Round trip from VPS, visiting every site not yet marked Cleared. Stop order is a nearest-neighbor estimate, not a guaranteed-shortest solution — the drawn path itself follows real roads.</p>
-      <button class="submit" type="button" id="planRouteBtn" style="background:#8C6D3F;">Plan Route</button>
-      <p class="hint" id="routeStatus" style="margin-top:10px; display:none;"></p>
-      <div id="routeSummaryCard" style="display:none; margin-top:12px; padding:14px; border-radius:10px; background:var(--paper); border:1px solid var(--line);">
-        <p style="font-weight:700; margin:0 0 6px;" id="routeStopsLine"></p>
-        <p style="margin:0; font-size:13px; color:var(--ink-soft);" id="routeDistanceLine"></p>
-      </div>
+   <div class="card">
+  <h2>Plan a Revisit Route</h2>
+  <p class="hint" style="margin-bottom:10px;">Round trip from VPS. Stop order is a nearest-neighbor estimate, not a guaranteed-shortest solution — the drawn path itself follows real roads.</p>
+  <div class="row2" style="margin-bottom:12px;">
+    <div class="field" style="margin-bottom:0;">
+      <label>Mode of transport</label>
+      <select id="routeProfileSelect">
+        <option value="foot-walking">Walking</option>
+        <option value="driving-car">Car</option>
+      </select>
     </div>
+    <div class="field" style="margin-bottom:0;">
+      <label>Sites to visit</label>
+      <select id="routeSiteModeSelect">
+        <option value="all">All active sites</option>
+        <option value="choose">Choose sites</option>
+      </select>
+    </div>
+  </div>
+  <div id="routeSiteChecklist" style="display:none; margin-bottom:12px; max-height:220px; overflow-y:auto; border:1px solid var(--line); border-radius:10px; padding:10px 12px;"></div>
+  <button class="submit" type="button" id="planRouteBtn" style="background:#8C6D3F;">Plan Route</button>
+  <p class="hint" id="routeStatus" style="margin-top:10px; display:none;"></p>
+  <div id="routeSummaryCard" style="display:none; margin-top:12px; padding:14px; border-radius:10px; background:var(--paper); border:1px solid var(--line);">
+    <p style="font-weight:700; margin:0 0 6px;" id="routeStopsLine"></p>
+    <p style="margin:0; font-size:13px; color:var(--ink-soft);" id="routeDistanceLine"></p>
+  </div>
+</div>
   </section>
 
   <!-- IDENTIFY WASTE (Citizen + Municipal) -->
